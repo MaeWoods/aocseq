@@ -3,6 +3,8 @@ VRTrack: A software package for the identification of antigen specific T cells f
 
 <img src="https://cloud.githubusercontent.com/assets/4307137/10105283/251b6868-63ae-11e5-9918-b789d9d682ec.png" width="15%"></img>
 
+<img src="VRTrack.png" width="15%"></img>
+
 ![Alt text](VRTrack.pdf) "Optional title")
 
 <p align="center">
