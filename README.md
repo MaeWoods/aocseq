@@ -1,5 +1,5 @@
 # VRTrack
-VRTrack: A software package written in R for the identification of antigen specific T cells from the masses.
+VRTrack is a software package written in R and Rcpp for the identification of antigen specific T cells from the masses.
 
 VRTrack is compatible with Adaptive biotechnologies' TCR immunoseq assay (https://www.immunoseq.com), or any time series TCR repertoire CDR3 TCRbeta data of nucleic acid sequence productive frequency, their corresponding amino acid sequences and the total number of T cells.
 
