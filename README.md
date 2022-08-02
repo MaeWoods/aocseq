@@ -4,5 +4,5 @@ VRTrack: A software package for the identification of antigen specific T cells f
 ![Alt text](https://github.com/MaeWoods/VRTrack/blob/main/VRTrack.pdf) "Optional title")
 
 <p align="center">
-  <img src="VRTrack.pdf" width="500">
+  <img src="VRTrack.pdf?raw=true" width="500">
 </p>
