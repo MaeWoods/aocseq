@@ -21,7 +21,7 @@ Total numbers $(n)$ of T cells for each condition and time point must be include
 
 Columns should be organised in the same way as the cell number input, i.e. by treatment or donor first for the initial time point, so that for $q$ unique CDR3 sequences,$j$ conditions and $k$ time points, the input matrix $M$ has $q$ rows and $j\mbox{k}$ columns $$\begin{bmatrix}1 & 2 & 3\\\ a & b & c \end{bmatrix}$$
 
-$$M=\begin{bmatrix}a_{11}(1) & a_{12}(1) & ... & a_{1j}(1) & ... & a_{11}(k) & a_{12}(k) & ... & a_{1j}(k) \\\ a_{q1}(1) & a_{q2}(1) & ... & a_{qj}(1) & ... & a_{q1}(k) & a_{q2}(k) & ... & a_{qj}(k) \end{bmatrix}$$
+$$M=\begin{bmatrix}a_{11}(1) & a_{12}(1) & ... & a_{1j}(1) & ... & a_{11}(k) & a_{12}(k) & ... & a_{1j}(k) \\\ . &&&&&&& \\\ . &&&&&&& \\\ . &&&&&&& \\\a_{q1}(1) & a_{q2}(1) & ... & a_{qj}(1) & ... & a_{q1}(k) & a_{q2}(k) & ... & a_{qj}(k) \end{bmatrix}$$
 
 # Installation: 
 
