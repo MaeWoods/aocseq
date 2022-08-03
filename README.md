@@ -12,7 +12,7 @@ Steps to run the software are illustrated below in the flow chart and functions 
 
 Results of VRTrack provide additional to extrapolate the CDR3 sequences of T cell clonotypes with the greatest expansion, annotates these clonotypes with sequence metadata so that the frequency of clonotypes that share the same amino acid sequence (homoplastic frequency) can be jointly merged with expansion, queried in online databases and included as additional metadata in a single cell RNA sequencing (scRNAseq) experiment.
 
-<img src="VRTrack.png" width="90%"></img>
+<img src="VRTrack.png" width="100%"></img>
 
 Flow chart showing VRTrack usage.
 
