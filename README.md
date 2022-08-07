@@ -1,8 +1,4 @@
 # VRTrack
-Immunosequencing is a multiplex PCR-based based method that amplifies rearranged TCR CDR3 sequences for a given TCR locus (Fig. 1) and exploits the capacity of high-throughput sequencing (HTS) technology to characterize tens of thousands of TCR CDR3 chains simultaneously.
-
-This package is a statistical tool to annotate and analyze this data.
-
 
 **VRTrack** is a software package written in R and Rcpp for the prediction of antigen specific T cells from the masses. The package was developed by the department of Cell and Gene Therapy at Baylor College of Medicine. For a full list of authors who contributed to the software design and application, please see the manuscript: ...
 
