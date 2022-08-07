@@ -10,6 +10,12 @@ Immunosequencing is a PCR-based based method that exploits the capacity of high-
 
 Specifically, **Variable region Track** (**VRTrack**) is a software package of statistical tools that can be used to analyse, annotate and query clonotypes subject to amplification or reduction in frequency following antigen stimulation or between experimental conditions. **VRTrack** has initially been applied to Virus specific T cells (VSTs) because these clinical blood products contain non specific bystander T cells in addition to potent virus specific clonotypes. However, the tool can be adapted to model other barcoded time series frequency data and the accompanying vignette demonstrates how the tool could be used to track clonotypes *in vivo*, using Adaptive's ImmuneAccess database. 
 
+# Installation and running the software: 
+
+install_github("MaeWoods/VRTrack");
+
+library("VRTrack")
+
 Steps to run the software are illustrated below in the flow chart and functions are documented in detail in the manual. Sequence and time series data are imported along with total T cell numbers at each time point.  **VRTrack** is different to alternative TCR frequencing tracking methods because instead of setting a difference in frequency to mark cells as expanders *a priori*, or modelling the probability of cell capture as a binomial distribution, **VRTrack** is Bayesian, in the sense that the frequency of all clonotypes at all time points is included in a statistical model to fit the average expansion of all clonotypes within a product over time. From this model, individual clonotypes can be classified as It is common for clonotypes to fall below the limit of detection in time series immunosequencing experiments model and the tool is designed to model this by including drop out events.
 
 Results of VRTrack provide additional to extrapolate the CDR3 sequences of T cell clonotypes with the greatest expansion, annotates these clonotypes with sequence metadata so that the frequency of clonotypes that share the same amino acid sequence (homoplastic frequency) can be jointly merged with expansion, queried in online databases and included as additional metadata in a single cell RNA sequencing (scRNAseq) experiment.
@@ -27,11 +33,6 @@ $$M=\begin{bmatrix}a_{11}(1) & a_{12}(1) & ... & a_{1j}(1) & ... & a_{11}(k) & a
 
 where $a_{qj}(k)$ is the frequency of the $q$th TCR in the $j$th condition at time point $k$.
 
-# Installation: 
-
-install_github("MaeWoods/VRTrack");
-
-library("VRTrack")
 
 # Documentation: 
 VRTrack can be used following the flow chart above, to read in the data and create a clonal object with CDR3 annotations and time series productive frequency, run the function CreateClonalObject().
