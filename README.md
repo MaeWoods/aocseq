@@ -1,6 +1,6 @@
 # VRTrack
 
-**VRTrack** is software for analysis of immunosequencing data and can be used to predict antigen specific T cells in mixed T cell repertoires with variable specificity. The package was developed by the department of Cell and Gene Therapy at Baylor College of Medicine. If you use VRTrack please consider citing one of the following: ...
+**VRTrack** is software for analysis of immunosequencing data and can be used to predict antigen specific T cells in mixed T cell repertoires with variable specificity. The package was developed by the department of Cell and Gene Therapy at Baylor College of Medicine. If you use **VRTrack** please consider citing one of the following: ...
 
 The tool is compatible with Adaptive biotechnologies' T cell receptor (TCR) immunoseq assay (https://www.immunoseq.com), or any time series CDR3 TCRbeta dataset of a TCR repertoire in the format of nucleic acid sequence productive frequency, the corresponding amino acid sequences and the total number of T cells at each time point. The data can be from multiple conditions or treatments and multiple time points.
 
