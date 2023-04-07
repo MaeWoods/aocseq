@@ -2,8 +2,8 @@
 
 **VRTrack** is software for analysis of immunosequencing data and can be used to predict antigen specific T cells in peripheral blood mononuclear cells. The package was developed by the department of Cell and Gene Therapy at Baylor College of Medicine. If you use **VRTrack** please consider citing one of the following: ...
 
-The tool is compatible with Adaptive biotechnologies' T cell receptor (TCR) immunoseq assay (https://www.immunoseq.com), or any time series CDR3 TCRbeta dataset of a TCR repertoire in the format of nucleic acid sequence productive frequency, the corresponding amino acid sequences and the total number of T cells at each time point. The data can be from multiple conditions or treatments and multiple time points.
-
+The aim of the tool is to provide compatibility with Adaptive biotechnologies' T cell receptor (TCR) immunoseq assay (https://www.immunoseq.com), or any time series CDR3 TCRbeta dataset of a TCR repertoire in the format of nucleic acid sequence productive frequency, the corresponding amino acid sequences and the total number of T cells at each time point. The data can be from multiple conditions or treatments and multiple time points.
+and other single cell data formats.
 # Biological motivation
 The TCR sequence is important to study because T cell specificity depends on the **CDR3** region of the TCR and this varys in sequence between individuals and cells. T cells can be grouped into clonotypes that share a common CDR3 beta chain and this way, used to estimate the frequency of target specific T cells in the blood. Harnessing this heterogeneity in sequence between T cells for a quantitative analysis of adaptive immunology has broad applicability in immunology and immunotherapy because the clearing of infection and cancer depends on availability of immune cells (including T cells) with capacity to mount a response. 
 Immunosequencing is a PCR-based based method that exploits the capacity of high-throughput sequencing technology to characterize tens of thousands of TCR CDR3 chains simultaneously and **VRTrack** has been developed to efficiently analyse and annotate this data.
