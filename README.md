@@ -1,4 +1,4 @@
-# Traceseq
+# CellTracer
 
 **traceseq** is software for analysis of immunosequencing data and can be used to predict and trace recently stimulated T cells in the blood with their gene expression transcripts. The package was developed by the department of Cell and Gene Therapy at Baylor College of Medicine. If you use **traceseq** please consider citing one of the following: ...
 
