@@ -7,15 +7,15 @@ The aim of the tool is to provide a method to rapidly quantify the number of cel
 The TCR sequence is important to study because T cell specificity depends on the **CDR3** region of the TCR and this varys in sequence between different people and single cells. T cells can be grouped into clonotypes that share a common CDR3 beta chain and this way, used to estimate the frequency of target specific T cells in the blood. Harnessing this heterogeneity in sequence between T cells for a quantitative analysis of adaptive immunology has broad applicability in immunology and immunotherapy because the clearing of infection and cancer depends on availability of immune cells (including T cells) with capacity to mount a response. 
 Immunosequencing is a PCR-based based method that exploits the capacity of high-throughput sequencing technology to characterize tens of thousands of TCR CDR3 chains simultaneously and **traceseq** has been developed to efficiently analyse and annotate this data.
 
-Specifically, **Variable region Track** (**VRTrack**) is a software package of statistical tools that can be used to analyse, annotate and query clonotypes subject to amplification or reduction in frequency following antigen stimulation or between experimental conditions. **VRTrack** has initially been applied to Virus specific T cells (VSTs) because these clinical blood products contain non specific bystander T cells in addition to potent virus specific clonotypes. However, the tool can be adapted to model other barcoded time series frequency data and the accompanying vignette demonstrates how the tool could be used to track clonotypes *in vivo*, using Adaptive's ImmuneAccess database. 
+Specifically, this is a software package of statistical tools that can be used to trace, analyse, annotate and query clonotypes subject to amplification or reduction in frequency following antigen stimulation or between experimental conditions. **traceseq** has initially been applied to Virus specific T cells (VSTs) because these clinical blood products contain non specific bystander T cells in addition to potent virus specific clonotypes. However, the tool can be adapted to model other barcoded time series frequency data and the accompanying vignette demonstrates how the tool could be used to track clonotypes *in vivo*, using Adaptive's ImmuneAccess database. 
 
 # Installation and running the software: 
 
-install_github("MaeWoods/VRTrack");
+install_github("MaeWoods/traceseq");
 
-library("VRTrack")
+library("traceseq")
 
-Steps to run the software are illustrated below in the flow chart and functions are documented in detail in the manual. Sequence and time series data are imported along with total T cell numbers at each time point.  **VRTrack** is different to alternative TCR frequencing tracking methods because instead of setting a difference in frequency to label cells *a priori*, or modelling the probability of cell capture as a binomial distribution, **VRTrack** is Bayesian, in the sense that the frequency of all clonotypes at all time points are included in a statistical model to fit the average expansion of all clonotypes within a product over time. From this model, individual clonotypes can be classified as It is common for clonotypes to fall below the limit of detection in time series immunosequencing experiments model and the tool is designed to model this by including drop out events.
+Steps to run the software are illustrated below in the flow chart and functions are documented in detail in the manual. Sequence and time series data are imported along with total T cell numbers at each time point.  **traceseq** is different to alternative TCR frequencing tracking methods because instead of setting a difference in frequency to label cells *a priori*, or modelling the probability of cell capture as a binomial distribution, **VRTrack** is Bayesian, in the sense that the frequency of all clonotypes at all time points are included in a statistical model to fit the average expansion of all clonotypes within a product over time. From this model, individual clonotypes can be classified as It is common for clonotypes to fall below the limit of detection in time series immunosequencing experiments model and the tool is designed to model this by including drop out events.
 
 Results of VRTrack provide additional to extrapolate the CDR3 sequences of T cell clonotypes with the greatest expansion, annotates these clonotypes with sequence metadata so that the frequency of clonotypes that share the same amino acid sequence (homoplastic frequency) can be jointly merged with expansion, queried in online databases and included as additional metadata in a single cell RNA sequencing (scRNAseq) experiment.
 
@@ -34,7 +34,7 @@ where $a_{qj}(k)$ is the frequency of the $q$th TCR in the $j$th condition at ti
 
 
 # Documentation: 
-VRTrack can be used following the flow chart above, to read in the data and create a clonal object with CDR3 annotations and time series productive frequency, run the function CreateClonalObject().
+traceseq can be used following the flow chart above, to read in the data and create a clonal object with CDR3 annotations and time series productive frequency, run the function CreateClonalObject().
 
 cp paste the function definitions
 
