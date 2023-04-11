@@ -1,6 +1,6 @@
-# Traceseq
+# Traceseq 0.0.1
 
-**traceseq** is software for analysis of immunosequencing data and can be used to predict and trace recently stimulated T cells in the blood with their gene expression transcripts. The package was developed by the department of Cell and Gene Therapy at Baylor College of Medicine. If you use **traceseq** please consider citing one of the following: ...
+**traceseq** is for analysis of immunosequencing data and can be used to predict and trace recently stimulated T cells in the blood with their gene expression transcripts. The package was developed by the department of Cell and Gene Therapy at Baylor College of Medicine. If you use **traceseq** please consider citing one of the following: ...
 
 The aim of the tool is to provide a method to rapidly quantify the number of activated cells that can bind a target, either in an immunotherapy product or after its infusion when administered as therapy. Designed to be compatible with single cell gene expression array data, if cells are barcoded by their T cell receptor (TCR), unique clones with target specificity can be identified by their gene expression. Therefore the tool serves in addition as a method to identify new neoantigen specific TCRs. For time series analysis, the CDR3 TCRbeta dataset of a TCR repertoire in the format of nucleic acid sequence productive frequency, the corresponding amino acid sequences and the total number of T cells at each time point are required. The data can be from multiple conditions or treatments and include multiple time points. 
 # Biological motivation
