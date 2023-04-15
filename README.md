@@ -22,7 +22,7 @@ Results of VRTrack provide additional to extrapolate the CDR3 sequences of T cel
 
 <img src="VRTrack.png" width="100%"></img>
 
-Flow chart showing VRTrack usage.
+Flow chart showing traceseq usage  “Created in Lucidchart, www.lucidchart.com”.
 
 # Data inputs: 
 Total numbers $(n)$ of T cells for each condition and time point must be included as a vector. The numbers should be listed in sequential order of time points and the ordering of the conditions should not change between time points, for example for $j$ conditions $n_{1}-n_{j}$ over $k$ time points $n_{1}(1)-n_{j}(k)$, the input vector should be in the form $$N=(n_{1}(1),n_{2}(1),...,n_{j}(1),...,n_{1}(k),n_{2}(k),...,n_{j}(k)).$$ If importing an Adaptive TCR immunoseq assay, the input files are the track rearrangements files for both the nucleic acid and amino acid sequences and the rearrangements file. For alternative data, matrices must be included in a specific format. Two matrices are required for input, one with the CDR3 sequence in amino acids and another with the CDR3 sequence in nucleic acids. Rows of the matrix must correspond to unique TCRBeta CDR3s and columns of the matrix should correspond to the TCR repertoire for each sample so that elements of the matrix are the productive frequency of each rearrangement for each sample.
