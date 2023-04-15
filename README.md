@@ -20,7 +20,7 @@ Sequence and time series data are imported along with total T cell numbers at ea
 
 Results of VRTrack provide additional to extrapolate the CDR3 sequences of T cell clonotypes with the greatest expansion, annotates these clonotypes with sequence metadata so that the frequency of clonotypes that share the same amino acid sequence (homoplastic frequency) can be jointly merged with expansion, queried in online databases and included as additional metadata in a single cell RNA sequencing (scRNAseq) experiment.
 
-<img src="VRTrack.png" width="100%"></img>
+<img src="Traceseq.png" width="100%"></img>
 
 Flow chart showing traceseq usage  “Created in Lucidchart, www.lucidchart.com”.
 
