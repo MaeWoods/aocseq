@@ -1,4 +1,4 @@
-# Traceseq 0.0.1: Gene set tracing for the identification of autocorrelated gene expression for heterogeneous population with variable sequences. Based on T cell activation and time-valued autoregressive processes
+# Traceseq 0.0.1: Gene set tracing for the identification of cells in mixed populations with variable sequences. Based on T cell activation and time-valued autoregressive processes
 
 **traceseq** is for analysis of immunosequencing data and can be used to predict and trace recently stimulated T cells in the blood with their gene expression transcripts. The package was developed by the department of Cell and Gene Therapy at Baylor College of Medicine. If you use **traceseq** please consider citing one of the following: ...
 
