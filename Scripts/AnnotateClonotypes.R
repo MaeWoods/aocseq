@@ -1,7 +1,32 @@
-saveRDS(ThreeHourStim,file="../RDS/ThreeHourStim.rds")
-saveRDS(SixHourStim,file="../RDS/SixHourStim.rds")
+#%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+# Functions
+#%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+#' Combine single cell data and annotate with cell labels based on functionality
+#'
+#' This function will read in Seurat objects processed by traceseq and generate a 
+#' spreadsheet of clonotypes grouped by CDR3 beta sequence that displays the 
+#' percentage of CD4 and CD8 cells with transcript expression that is greater than
+#' the quantile cutoff of the control set in CombineData. A gene list used to estimate 
+#' specificity can be chosen and is application specific. Other parameters are listed 
+#' for debugging, but can be left as default values.
+#'
+#' @param gex.path path to gene expression data in the format of cellranger feature barcode matrices
+#' @param vdj.path path to VDJ expression data in the format of cellranger csv files 
+#' @param marker.gene list of marker genes used for specificity analysis
+#' @param mask listing of genes to be dropped from analysis
+#' @param save.dir directory for storing Seurat object RDS files
+#' @param index.control index of the control sequencing sample
+#' @param demultiplex Boolean value used to indicate if the data was hashtagged
+#' @param hashtags Integer represents the number of hashtags used (if any)
+#' @param verbose Print progress bars and output
+#'
+#' @return A Seurat object list containing metadata and VDJ annotations.
+#' @concept annotation
+#' @export
+#'
 
-ThreeHourStim=readRDS("../RDS/ThreeHourStim.rds")
+
+ThreeHourStim=TetAssay
 SixHourStim=readRDS("../RDS/SixHourStim.rds")
 
 markerGene=c("IFNG","CRTAM","CD69","TNF","CD70","TNFRSF9")
@@ -41,64 +66,61 @@ AnnotateClonotypes(ThreeHourStim,SixHourStim,moi,clonotype_path,cell_path,moipos
 
 
 moi="IFNG"
-clonotype_path="../SupplementaryTables/SummaryIFNG_2_5%.csv"
-cell_path="../SupplementaryTables/Cells.csv"
+clonotype_path="../SupplementaryTables/Tetramer/SummaryIFNG_2_5%.csv"
+cell_path="../SupplementaryTables/Tetramer/Cells.csv"
 moipos=1
-AnnotateClonotypes(ThreeHourStim,SixHourStim,moi,clonotype_path,cell_path,moipos)
+
+index.control=1
+threshold.cutoff=.975
+n.batch=2
+names.spreadsheet = c("Clone","3hr CD4 high CMV (%)","3hr CD8 high CMV (%)","3hr cells high CMV (%)"
+                      ,"3hr CD4 high EBV (%)","3hr CD8 high EBV (%)","3hr cells high EBV (%)","3hr CD4 high BKV (%)",
+                      "3hr CD8 high BKV (%)","3hr cells high BKV (%)", "3hr CD4 high US (%)",
+                      "3hr CD8 high US (%)","3hr cells high US (%)","3hr Total cells CMV","3hr Total cells EBV",
+                      "3hr Total cells BKV","3hr Total cells US",
+                      "6hr CD4 high CMV (%)","6hr CD8 high CMV (%)","6hr cells high CMV (%)",
+                      "6hr CD4 high EBV (%)","6hr CD8 high EBV (%)","6hr cells high EBV (%)","6hr CD4 high BKV (%)",
+                      "6hr CD8 high BKV (%)","6hr cells high BKV (%)","6hr CD4 high US (%)",
+                      "6hr CD8 high US (%)","6hr cells high US (%)","6hr Total cells CMV","6hr Total cells EBV",
+                      "6hr Total cells BKV","6hr Total cells US")
+
+AnnotateClonotypes(ThreeHourStim,ThreeHourStim,moi,clonotype_path,cell_path,moipos)
 
 
-AnnotateClonotypes <- function(ThreeHour,SixHour,moi,clonotype_path,cell_path,moipos){
+AnnotateClonotypes <- function(Clonal_Obs,moi,clonotype_path,moipos,n.batch,threshold.cutoff,index.control,conditions,names.spreadsheet){
   
-  #cell percentages t1
-  unstim_t1 <- ThreeHour[[4]]
-  moiunstim_t1=match(moi, row.names(unstim_t1[["SCT"]]@data))
-  cmv_sct_t1 <- ThreeHour[[1]]
-  moicmv_t1=match(moi, row.names(cmv_sct_t1[["SCT"]]@data))
-  ebv_sct_t1 <- ThreeHour[[2]]
-  moiebv_t1=match(moi, row.names(ebv_sct_t1[["SCT"]]@data))
-  bkv_sct_t1 <- ThreeHour[[3]]
-  moibkv_t1=match(moi, row.names(bkv_sct_t1[["SCT"]]@data))
+  #match markers of interest
   
-  #cell percentages t2
-  unstim_t2 <- SixHour[[4]]
-  moiunstim_t2=match(moi, row.names(unstim_t2[["SCT"]]@data))
-  cmv_sct_t2 <- SixHour[[1]]
-  moicmv_t2=match(moi, row.names(cmv_sct_t2[["SCT"]]@data))
-  ebv_sct_t2 <- SixHour[[2]]
-  moiebv_t2=match(moi, row.names(ebv_sct_t2[["SCT"]]@data))
-  bkv_sct_t2 <- SixHour[[3]]
-  moibkv_t2=match(moi, row.names(bkv_sct_t2[["SCT"]]@data))
+  unstim_t1 <- Clonal_Obs[[q*n.batch + k]]
+  moi_samp[[q*n.batch + k]]=match(moi, row.names(Clonal_Obs[[q*n.batch + k]][["SCT"]]@data))
+  cutoff[[q]]=quantile(Clonal_Obs[[index.control[[q]]]][["SCT"]]@data[moi_samp[[q*n.batch + k]],],threshold.cutoff)[[1]]
   
-  cutoff_t1=quantile(unstim_t1[["SCT"]]@data[moiunstim_t1,],.975)[[1]]
-  cutoff_t2=quantile(unstim_t2[["SCT"]]@data[moiunstim_t2,],.975)[[1]]
+  #probably end loop here
+  allclonotypes = union(Clonal_Obs[[1]]@meta.data$cdr3_na,Clonal_Obs[[2]]@meta.data$cdr3_na)
+  intersectclonotypes=intersect(Clonal_Obs[[1]]@meta.data$cdr3_na,Clonal_Obs[[2]]@meta.data$cdr3_na)
+  for(q in 1:conditions){
+    for(k in 3:n.batch){
+      allclonotypes = union(allclonotypes,Clonal_Obs[[q*n.batch + k]]@meta.data$cdr3_na)
+      intersectclonotypes=intersect(intersectclonotypes,Clonal_Obs[[q*n.batch + k]]@meta.data$cdr3_na)
+    }
+  }
   
-  allclonotypes = setdiff(levels(factor(union(cmv_sct_t2@meta.data$cdr3_na,union(ebv_sct_t2@meta.data$cdr3_na,union(unstim_t2@meta.data$cdr3_na,union(bkv_sct_t2@meta.data$cdr3_na,union(unstim_t1@meta.data$cdr3_na,union(cmv_sct_t1@meta.data$cdr3_na,union(bkv_sct_t1@meta.data$cdr3_na,ebv_sct_t1@meta.data$cdr3_na))))))))),"unassigned")
+  allclonotypes = setdiff(levels(factor(allclonotypes)),"unassigned")
+  intersectclonotypes = setdiff(levels(factor(intersectclonotypes)),"unassigned")
   
-  intersectclonotypes = setdiff(levels(factor(intersect(intersect(intersect(intersect(bkv_sct_t1@meta.data$cdr3_na,
-                                                                                      ebv_sct_t1@meta.data$cdr3_na),
-                                                                            cmv_sct_t1@meta.data$cdr3_na),
-                                                                  unstim_t1@meta.data$cdr3_na),intersect(intersect(intersect(bkv_sct_t2@meta.data$cdr3_na,
-                                                                                                                             ebv_sct_t2@meta.data$cdr3_na),
-                                                                                                                   cmv_sct_t2@meta.data$cdr3_na),
-                                                                                                         unstim_t2@meta.data$cdr3_na)))),"unassigned")
+  sample.clonotypes=vector(mode = "list", length = conditions*n.batch)
   
-  UMOclonotypes_t1=setdiff(levels(factor(unstim_t1@meta.data$cdr3_na)),"unassigned")
-  EBVclonotypes_t1=setdiff(setdiff(levels(factor(ebv_sct_t1@meta.data$cdr3_na)),"unassigned"),UMOclonotypes_t1)
-  BKVclonotypes_t1=setdiff(setdiff(levels(factor(bkv_sct_t1@meta.data$cdr3_na)),"unassigned"),union(EBVclonotypes_t1,UMOclonotypes_t1))
-  CMVclonotypes_t1=setdiff(setdiff(levels(factor(cmv_sct_t1@meta.data$cdr3_na)),"unassigned"),union(BKVclonotypes_t1,union(EBVclonotypes_t1,UMOclonotypes_t1)))
-  
-  UMOclonotypes_t2=setdiff(setdiff(levels(factor(unstim_t2@meta.data$cdr3_na)),"unassigned"),union(CMVclonotypes_t1,
-                                                                                                   union(BKVclonotypes_t1,union(EBVclonotypes_t1,UMOclonotypes_t1))))
-  EBVclonotypes_t2=setdiff(setdiff(levels(factor(ebv_sct_t2@meta.data$cdr3_na)),"unassigned"),union(UMOclonotypes_t2,
-                                                                                                    union(CMVclonotypes_t1,
-                                                                                                          union(BKVclonotypes_t1,union(EBVclonotypes_t1,UMOclonotypes_t1)))))
-  BKVclonotypes_t2=setdiff(setdiff(levels(factor(bkv_sct_t2@meta.data$cdr3_na)),"unassigned"),union(EBVclonotypes_t2,
-                                                                                                    union(UMOclonotypes_t2,
-                                                                                                          union(CMVclonotypes_t1,
-                                                                                                                union(BKVclonotypes_t1,union(EBVclonotypes_t1,UMOclonotypes_t1))))))
-  CMVclonotypes_t2=setdiff(setdiff(levels(factor(cmv_sct_t2@meta.data$cdr3_na)),"unassigned"),union(BKVclonotypes_t2,
-                                                                                                    union(EBVclonotypes_t2,union(UMOclonotypes_t2,union(CMVclonotypes_t1,union(BKVclonotypes_t1,union(EBVclonotypes_t1,UMOclonotypes_t1)))))))
-  
+  sample.clonotypes[[index.control[[1]]]]=setdiff(levels(factor(Clonal_Obs[[index.control[[q]]]]@meta.data$cdr3_na)),"unassigned")
+  combine.clonotypes = sample.clonotypes[[index.control[[1]]]]
+  for(q in 1:conditions){
+    for(k in 3:n.batch){
+      if(index.control[[1]]!=q*n.batch + k){
+      f=q*n.batch + k
+      sample.clonotypes[[index.control[[f]]]]=setdiff(setdiff(levels(factor(Clonal_Obs[[index.control[[f]]]]@meta.data$cdr3_na)),"unassigned"),combine.clonotypes)
+      combine.clonotypes=union(combine.clonotypes,sample.clonotypes[[index.control[[f]]]])
+      }
+    }
+  }
   
   #assign counts for ranking by UMO, then EBV, BKV - CMV
   print("Assigning counts for ranking...")
@@ -106,8 +128,10 @@ AnnotateClonotypes <- function(ThreeHour,SixHour,moi,clonotype_path,cell_path,mo
   Shared=rep(0,NClonotypes)
   Clonefreq=rep(0,NClonotypes)
   for(k in 1:NClonotypes){
-    if(length(intersect(allclonotypes[k],UMOclonotypes_t1))>0){
-      Clonefreq[k]=subset(unstim_t1,cdr3_na==allclonotypes[k])@meta.data$countcln[1]
+    for(q in 1:conditions){
+      for(d in 3:n.batch){
+    if(length(intersect(allclonotypes[k],sample.clonotypes[[q*n.batch + d]]))>0){
+      Clonefreq[k]=subset(Clonal_Obs[[q*n.batch + d]],cdr3_na==allclonotypes[k])@meta.data$countcln[1]
       if(length(intersect(allclonotypes[k],intersectclonotypes))>0){
         Shared[k]="yes"
       }
@@ -115,69 +139,9 @@ AnnotateClonotypes <- function(ThreeHour,SixHour,moi,clonotype_path,cell_path,mo
         Shared[k]="no"
       }
     }
-    else if(length(intersect(allclonotypes[k],EBVclonotypes_t1))>0){
-      Clonefreq[k]=subset(ebv_sct_t1,cdr3_na==allclonotypes[k])@meta.data$countcln[1]
-      if(length(intersect(allclonotypes[k],intersectclonotypes))>0){
-        Shared[k]="yes"
+        
       }
-      else{
-        Shared[k]="no"
       }
-    }
-    else if(length(intersect(allclonotypes[k],BKVclonotypes_t1))>0){
-      Clonefreq[k]=subset(bkv_sct_t1,cdr3_na==allclonotypes[k])@meta.data$countcln[1]
-      if(length(intersect(allclonotypes[k],intersectclonotypes))>0){
-        Shared[k]="yes"
-      }
-      else{
-        Shared[k]="no"
-      }
-    }
-    else if(length(intersect(allclonotypes[k],CMVclonotypes_t1))>0){
-      Clonefreq[k]=subset(cmv_sct_t1,cdr3_na==allclonotypes[k])@meta.data$countcln[1]
-      if(length(intersect(allclonotypes[k],intersectclonotypes))>0){
-        Shared[k]="yes"
-      }
-      else{
-        Shared[k]="no"
-      }
-    }
-    else if(length(intersect(allclonotypes[k],UMOclonotypes_t2))>0){
-      Clonefreq[k]=subset(unstim_t2,cdr3_na==allclonotypes[k])@meta.data$countcln[1]
-      if(length(intersect(allclonotypes[k],intersectclonotypes))>0){
-        Shared[k]="yes"
-      }
-      else{
-        Shared[k]="no"
-      }
-    }
-    else if(length(intersect(allclonotypes[k],EBVclonotypes_t2))>0){
-      Clonefreq[k]=subset(ebv_sct_t2,cdr3_na==allclonotypes[k])@meta.data$countcln[1]
-      if(length(intersect(allclonotypes[k],intersectclonotypes))>0){
-        Shared[k]="yes"
-      }
-      else{
-        Shared[k]="no"
-      }
-    }
-    else if(length(intersect(allclonotypes[k],BKVclonotypes_t2))>0){
-      Clonefreq[k]=subset(bkv_sct_t2,cdr3_na==allclonotypes[k])@meta.data$countcln[1]
-      if(length(intersect(allclonotypes[k],intersectclonotypes))>0){
-        Shared[k]="yes"
-      }
-      else{
-        Shared[k]="no"
-      }
-    }
-    else if(length(intersect(allclonotypes[k],CMVclonotypes_t2))>0){
-      Clonefreq[k]=subset(cmv_sct_t2,cdr3_na==allclonotypes[k])@meta.data$countcln[1]
-      if(length(intersect(allclonotypes[k],intersectclonotypes))>0){
-        Shared[k]="yes"
-      }
-      else{
-        Shared[k]="no"
-      }
-    }
   }
   
   Clonotypes_df = data.frame(cdr3=allclonotypes,shared=Shared,frequency=Clonefreq)
@@ -186,82 +150,28 @@ AnnotateClonotypes <- function(ThreeHour,SixHour,moi,clonotype_path,cell_path,mo
                                frequency=Clonotypes_df$frequency[order(Clonotypes_df$frequency,decreasing=TRUE)])
   
   Clone=rep(0,length(allclonotypes))
-  CD4CMV_t1=rep(0,length(allclonotypes))
-  CD4EBV_t1=rep(0,length(allclonotypes))
-  CD4BKV_t1=rep(0,length(allclonotypes))
-  CD4US_t1=rep(0,length(allclonotypes))
-  CD8CMV_t1=rep(0,length(allclonotypes))
-  CD8EBV_t1=rep(0,length(allclonotypes))
-  CD8BKV_t1=rep(0,length(allclonotypes))
-  CD8US_t1=rep(0,length(allclonotypes))
-  AllCMV_t1=rep(0,length(allclonotypes))
-  AllEBV_t1=rep(0,length(allclonotypes))
-  AllBKV_t1=rep(0,length(allclonotypes))
-  AllUS_t1=rep(0,length(allclonotypes))
-  TotalBKV_t1=rep(0,length(allclonotypes))
-  TotalCMV_t1=rep(0,length(allclonotypes))
-  TotalEBV_t1=rep(0,length(allclonotypes))
-  Totalunstim_t1=rep(0,length(allclonotypes))
-  
-  CD4CMV_t2=rep(0,length(allclonotypes))
-  CD4EBV_t2=rep(0,length(allclonotypes))
-  CD4BKV_t2=rep(0,length(allclonotypes))
-  CD4US_t2=rep(0,length(allclonotypes))
-  CD8CMV_t2=rep(0,length(allclonotypes))
-  CD8EBV_t2=rep(0,length(allclonotypes))
-  CD8BKV_t2=rep(0,length(allclonotypes))
-  CD8US_t2=rep(0,length(allclonotypes))
-  AllCMV_t2=rep(0,length(allclonotypes))
-  AllEBV_t2=rep(0,length(allclonotypes))
-  AllBKV_t2=rep(0,length(allclonotypes))
-  AllUS_t2=rep(0,length(allclonotypes))
-  TotalBKV_t2=rep(0,length(allclonotypes))
-  TotalCMV_t2=rep(0,length(allclonotypes))
-  TotalEBV_t2=rep(0,length(allclonotypes))
-  Totalunstim_t2=rep(0,length(allclonotypes))
-  
+  CD4_c=vector(mode = "list", length = conditions*n.batch)
+  CD8_c=vector(mode = "list", length = conditions*n.batch)
+  All_c=vector(mode = "list", length = conditions*n.batch)
+  Total_c=vector(mode = "list", length = conditions*n.batch)
+  TCR_seq=vector(mode = "list", length = conditions*n.batch)
+  CD4df=vector(mode = "list", length = conditions*n.batch)
+  CD8df=vector(mode = "list", length = conditions*n.batch)
+  Alldf=vector(mode = "list", length = conditions*n.batch)
+  for(q in 1:conditions){
+    for(d in 3:n.batch){
+      CD4_c[[q*n.batch + d]]=rep(0,length(allclonotypes))
+      CD8_c[[q*n.batch + d]]=rep(0,length(allclonotypes))
+      All_c[[q*n.batch + d]]=rep(0,length(allclonotypes))
+      Total_c[[q*n.batch + d]]=rep(0,length(allclonotypes))
+      TCR_seq[[q*n.batch + d]]=Clonal_Obs[[q*n.batch + d]]@meta.data$cdr3_na
+      CD4df[[q*n.batch + d]]=data.frame(clonotype=subset(Clonal_Obs[[q*n.batch + d]],CD4cells=="1")@meta.data$cdr3_na,mark=subset(Clonal_Obs[[q*n.batch + d]],CD4cells=="1")@meta.data[[8+moipos]])
+      CD8df[[q*n.batch + d]]=data.frame(clonotype=subset(Clonal_Obs[[q*n.batch + d]],CD8cells=="1")@meta.data$cdr3_na,mark=subset(Clonal_Obs[[q*n.batch + d]],CD8cells=="1")@meta.data[[8+moipos]])
+      Alldf[[q*n.batch + d]]=data.frame(clonotype=Clonal_Obs[[q*n.batch + d]]@meta.data$cdr3_na,mark=Clonal_Obs[[q*n.batch + d]]@meta.data[[8+moipos]])
+    }
+  }
   
   print("Assigning proportional specificity...")
-  TCRsunstimT1=unstim_t1@meta.data$cdr3_na
-  TCRcmvT1=cmv_sct_t1@meta.data$cdr3_na
-  TCRebvT1=ebv_sct_t1@meta.data$cdr3_na
-  TCRbkvT1=bkv_sct_t1@meta.data$cdr3_na
-  TCRsunstimT2=unstim_t2@meta.data$cdr3_na
-  TCRcmvT2=cmv_sct_t2@meta.data$cdr3_na
-  TCRebvT2=ebv_sct_t2@meta.data$cdr3_na
-  TCRbkvT2=bkv_sct_t2@meta.data$cdr3_na
-  CD4dfunstim_t1=data.frame(clonotype=subset(unstim_t1,CD4cells=="1")@meta.data$cdr3_na,mark=subset(unstim_t1,CD4cells=="1")@meta.data[[8+moipos]])
-  CD4dfcmv_t1=data.frame(clonotype=subset(cmv_sct_t1,CD4cells=="1")@meta.data$cdr3_na,mark=subset(cmv_sct_t1,CD4cells=="1")@meta.data[[8+moipos]])
-  CD4dfebv_t1=data.frame(clonotype=subset(ebv_sct_t1,CD4cells=="1")@meta.data$cdr3_na,mark=subset(ebv_sct_t1,CD4cells=="1")@meta.data[[8+moipos]])
-  CD4dfbkv_t1=data.frame(clonotype=subset(bkv_sct_t1,CD4cells=="1")@meta.data$cdr3_na,mark=subset(bkv_sct_t1,CD4cells=="1")@meta.data[[8+moipos]])
-  
-  CD8dfunstim_t1=data.frame(clonotype=subset(unstim_t1,CD8cells=="1")@meta.data$cdr3_na,mark=subset(unstim_t1,CD8cells=="1")@meta.data[[8+moipos]])
-  CD8dfcmv_t1=data.frame(clonotype=subset(cmv_sct_t1,CD8cells=="1")@meta.data$cdr3_na,mark=subset(cmv_sct_t1,CD8cells=="1")@meta.data[[8+moipos]])
-  CD8dfebv_t1=data.frame(clonotype=subset(ebv_sct_t1,CD8cells=="1")@meta.data$cdr3_na,mark=subset(ebv_sct_t1,CD8cells=="1")@meta.data[[8+moipos]])
-  CD8dfbkv_t1=data.frame(clonotype=subset(bkv_sct_t1,CD8cells=="1")@meta.data$cdr3_na,mark=subset(bkv_sct_t1,CD8cells=="1")@meta.data[[8+moipos]])
-  
-  dfunstim_t1=data.frame(clonotype=unstim_t1@meta.data$cdr3_na,mark=unstim_t1@meta.data[[8+moipos]])
-  dfcmv_t1=data.frame(clonotype=cmv_sct_t1@meta.data$cdr3_na,mark=cmv_sct_t1@meta.data[[8+moipos]])
-  dfebv_t1=data.frame(clonotype=ebv_sct_t1@meta.data$cdr3_na,mark=ebv_sct_t1@meta.data[[8+moipos]])
-  dfbkv_t1=data.frame(clonotype=bkv_sct_t1@meta.data$cdr3_na,mark=bkv_sct_t1@meta.data[[8+moipos]])
-  
-  
-  CD4dfunstim_t2=data.frame(clonotype=subset(unstim_t2,CD4cells=="1")@meta.data$cdr3_na,mark=subset(unstim_t2,CD4cells=="1")@meta.data[[8+moipos]])
-  CD4dfcmv_t2=data.frame(clonotype=subset(cmv_sct_t2,CD4cells=="1")@meta.data$cdr3_na,mark=subset(cmv_sct_t2,CD4cells=="1")@meta.data[[8+moipos]])
-  CD4dfebv_t2=data.frame(clonotype=subset(ebv_sct_t2,CD4cells=="1")@meta.data$cdr3_na,mark=subset(ebv_sct_t2,CD4cells=="1")@meta.data[[8+moipos]])
-  CD4dfbkv_t2=data.frame(clonotype=subset(bkv_sct_t2,CD4cells=="1")@meta.data$cdr3_na,mark=subset(bkv_sct_t2,CD4cells=="1")@meta.data[[8+moipos]])
-  
-  CD8dfunstim_t2=data.frame(clonotype=subset(unstim_t2,CD8cells=="1")@meta.data$cdr3_na,mark=subset(unstim_t2,CD8cells=="1")@meta.data[[8+moipos]])
-  CD8dfcmv_t2=data.frame(clonotype=subset(cmv_sct_t2,CD8cells=="1")@meta.data$cdr3_na,mark=subset(cmv_sct_t2,CD8cells=="1")@meta.data[[8+moipos]])
-  CD8dfebv_t2=data.frame(clonotype=subset(ebv_sct_t2,CD8cells=="1")@meta.data$cdr3_na,mark=subset(ebv_sct_t2,CD8cells=="1")@meta.data[[8+moipos]])
-  CD8dfbkv_t2=data.frame(clonotype=subset(bkv_sct_t2,CD8cells=="1")@meta.data$cdr3_na,mark=subset(bkv_sct_t2,CD8cells=="1")@meta.data[[8+moipos]])
-  
-  dfunstim_t2=data.frame(clonotype=unstim_t2@meta.data$cdr3_na,mark=unstim_t2@meta.data[[8+moipos]])
-  dfcmv_t2=data.frame(clonotype=cmv_sct_t2@meta.data$cdr3_na,mark=cmv_sct_t2@meta.data[[8+moipos]])
-  dfebv_t2=data.frame(clonotype=ebv_sct_t2@meta.data$cdr3_na,mark=ebv_sct_t2@meta.data[[8+moipos]])
-  dfbkv_t2=data.frame(clonotype=bkv_sct_t2@meta.data$cdr3_na,mark=bkv_sct_t2@meta.data[[8+moipos]])
-  
-  
   for(k in 1:NClonotypes){
     Clone[k]=Clonotypes_data$cdr3[k]
     Ncellstotunstim=0
@@ -272,340 +182,79 @@ AnnotateClonotypes <- function(ThreeHour,SixHour,moi,clonotype_path,cell_path,mo
     Ncellsaboveebv_sct=0
     Ncellstotbkv_sct=0
     Ncellsabovebkv_sct=0
-    tempvec=subset(CD4dfunstim_t1,clonotype==Clonotypes_data$cdr3[k])$mark
-    tempvectot=subset(dfunstim_t1,clonotype==Clonotypes_data$cdr3[k])$mark
-    if(length(intersect(Clonotypes_data$cdr3[k],TCRsunstimT1))>0){
+    tempvec=subset(CD4df[[q*n.batch + d]],clonotype==Clonotypes_data$cdr3[k])$mark
+    tempvectot=subset(Alldf[[q*n.batch + d]],clonotype==Clonotypes_data$cdr3[k])$mark
+    if(length(intersect(Clonotypes_data$cdr3[k],TCR_seq[[q*n.batch + d]]))>0){
       Ncellstotunstim=length(tempvectot)
       Ncellsaboveunstim=length(tempvec)-length(subset(tempvec,tempvec=="unassigned"))
       Allaboveunstim=length(tempvectot)-length(subset(tempvectot,tempvectot=="unassigned"))
-      CD4US_t1[k]=0
-      AllUS_t1[k]=0
+      CD4_c[[q*n.batch + d]][k]=0
+      All_c[[q*n.batch + d]][k]=0
       if(Ncellstotunstim>0){
         
-          CD4US_t1[k]=(Ncellsaboveunstim/Ncellstotunstim)*100
-          AllUS_t1[k]=(Allaboveunstim/Ncellstotunstim)*100
+        CD4_c[[q*n.batch + d]][k]=(Ncellsaboveunstim/Ncellstotunstim)*100
+        All_c[[q*n.batch + d]][k]=(Allaboveunstim/Ncellstotunstim)*100
         
       }
     }
     
-    tempvec=subset(CD8dfunstim_t1,clonotype==Clonotypes_data$cdr3[k])$mark
-    tempvectot=subset(dfunstim_t1,clonotype==Clonotypes_data$cdr3[k])$mark
-    if(length(intersect(Clonotypes_data$cdr3[k],TCRsunstimT1))>0){
+    tempvec=subset(CD8df[[q*n.batch + d]],clonotype==Clonotypes_data$cdr3[k])$mark
+    tempvectot=subset(Alldf[[q*n.batch + d]],clonotype==Clonotypes_data$cdr3[k])$mark
+    if(length(intersect(Clonotypes_data$cdr3[k],TCR_seq[[q*n.batch + d]]))>0){
       Ncellstotunstim=length(tempvectot)
       Ncellsaboveunstim=length(tempvec)-length(subset(tempvec,tempvec=="unassigned"))
       Allaboveunstim=length(tempvectot)-length(subset(tempvectot,tempvectot=="unassigned"))
-      CD8US_t1[k]=0
+      CD8_c[[q*n.batch + d]][k]=0
       if(Ncellstotunstim>0){
         
-          CD8US_t1[k]=(Ncellsaboveunstim/Ncellstotunstim)*100
+        CD8_c[[q*n.batch + d]][k]=(Ncellsaboveunstim/Ncellstotunstim)*100
         
       }
     }
     
-    if(length(intersect(Clonotypes_data$cdr3[k],TCRcmvT1))>0){
-      tempvec=subset(CD4dfcmv_t1,clonotype==Clonotypes_data$cdr3[k])$mark
-      tempvectot=subset(dfcmv_t1,clonotype==Clonotypes_data$cdr3[k])$mark
-      Ncellstotcmv_sct=length(tempvectot)
-      Ncellsabovecmv_sct=length(tempvec)-length(subset(tempvec,tempvec=="unassigned"))
-      Allaboveunstim=length(tempvectot)-length(subset(tempvectot,tempvectot=="unassigned"))
-      CD4CMV_t1[k]=0
-      AllCMV_t1[k]=0
-      if(Ncellstotcmv_sct>0){
-        
-          CD4CMV_t1[k]=(Ncellsabovecmv_sct/Ncellstotcmv_sct)*100
-          AllCMV_t1[k]=(Allaboveunstim/Ncellstotcmv_sct)*100
-        
-      }
-    }
-    
-    if(length(intersect(Clonotypes_data$cdr3[k],TCRcmvT1))>0){
-      tempvec=subset(CD8dfcmv_t1,clonotype==Clonotypes_data$cdr3[k])$mark
-      tempvectot=subset(dfcmv_t1,clonotype==Clonotypes_data$cdr3[k])$mark
-      Ncellstotcmv_sct=length(tempvectot)
-      Ncellsabovecmv_sct=length(tempvec)-length(subset(tempvec,tempvec=="unassigned"))
-      CD8CMV_t1[k]=0
-      if(Ncellstotcmv_sct>0){
-        
-          CD8CMV_t1[k]=(Ncellsabovecmv_sct/Ncellstotcmv_sct)*100
-        
-      }
-    }
-    
-    
-    
-    if(length(intersect(Clonotypes_data$cdr3[k],TCRebvT1))>0){
-      tempvec=subset(CD4dfebv_t1,clonotype==Clonotypes_data$cdr3[k])$mark
-      tempvectot=subset(dfebv_t1,clonotype==Clonotypes_data$cdr3[k])$mark
-      Ncellstotebv_sct=length(tempvectot)
-      Ncellsaboveebv_sct=length(tempvec)-length(subset(tempvec,tempvec=="unassigned"))
-      Allaboveunstim=length(tempvectot)-length(subset(tempvectot,tempvectot=="unassigned"))
-      CD4EBV_t1[k]=0
-      AllEBV_t1[k]=0
-      if(Ncellstotebv_sct>0){
-       
-          CD4EBV_t1[k]=(Ncellsaboveebv_sct/Ncellstotebv_sct)*100
-          AllEBV_t1[k]=(Allaboveunstim/Ncellstotebv_sct)*100
-        
-      }
-    }
-    
-    if(length(intersect(Clonotypes_data$cdr3[k],TCRebvT1))>0){
-      tempvec=subset(CD8dfebv_t1,clonotype==Clonotypes_data$cdr3[k])$mark
-      tempvectot=subset(dfebv_t1,clonotype==Clonotypes_data$cdr3[k])$mark
-      Ncellstotebv_sct=length(tempvectot)
-      Ncellsaboveebv_sct=length(tempvec)-length(subset(tempvec,tempvec=="unassigned"))
-      CD8EBV_t1[k]=0
-      if(Ncellstotebv_sct>0){
-       
-          CD8EBV_t1[k]=(Ncellsaboveebv_sct/Ncellstotebv_sct)*100
-        
-      }
-    }
-    
-    if(length(intersect(Clonotypes_data$cdr3[k],TCRbkvT1))>0){
-      tempvec=subset(CD4dfbkv_t1,clonotype==Clonotypes_data$cdr3[k])$mark
-      tempvectot=subset(dfbkv_t1,clonotype==Clonotypes_data$cdr3[k])$mark
-      Ncellstotbkv_sct=length(tempvectot)
-      Ncellsabovebkv_sct=length(tempvec)-length(subset(tempvec,tempvec=="unassigned"))
-      Allaboveunstim=length(tempvectot)-length(subset(tempvectot,tempvectot=="unassigned"))
-      CD4BKV_t1[k]=0
-      AllBKV_t1[k]=0
-      if(Ncellstotbkv_sct>0){
-          CD4BKV_t1[k]=(Ncellsabovebkv_sct/Ncellstotbkv_sct)*100
-          AllBKV_t1[k]=(Allaboveunstim/Ncellstotbkv_sct)*100
-      }
-    }
-    
-    if(length(intersect(Clonotypes_data$cdr3[k],TCRbkvT1))>0){
-      tempvec=subset(CD8dfbkv_t1,clonotype==Clonotypes_data$cdr3[k])$mark
-      tempvectot=subset(dfbkv_t1,clonotype==Clonotypes_data$cdr3[k])$mark
-      Ncellstotbkv_sct=length(tempvectot)
-      Ncellsabovebkv_sct=length(tempvec)-length(subset(tempvec,tempvec=="unassigned"))
-      CD8BKV_t1[k]=0
-      if(Ncellstotbkv_sct>0){
-        
-          CD8BKV_t1[k]=(Ncellsabovebkv_sct/Ncellstotbkv_sct)*100
-        
-      }
-    }
-    
-    TotalBKV_t1[k] = Ncellstotbkv_sct
-    TotalCMV_t1[k]=Ncellstotcmv_sct
-    TotalEBV_t1[k]=Ncellstotebv_sct
-    Totalunstim_t1[k]=Ncellstotunstim
-    
-    
+    Total_c[[q*n.batch + d]][k]=Ncellstotunstim
     Ncellstotunstim=0
-    Ncellsaboveunstim=0
-    Ncellstotcmv_sct=0
-    Ncellsabovecmv_sct=0
-    Ncellstotebv_sct=0
-    Ncellsaboveebv_sct=0
-    Ncellstotbkv_sct=0
-    Ncellsabovebkv_sct=0
-    if(length(intersect(Clonotypes_data$cdr3[k],TCRsunstimT2))>0){
-      tempvec=subset(CD4dfunstim_t2,clonotype==Clonotypes_data$cdr3[k])$mark
-      tempvectot=subset(dfunstim_t2,clonotype==Clonotypes_data$cdr3[k])$mark
-      Ncellstotunstim=length(tempvectot)
-      Ncellsaboveunstim=length(tempvec)-length(subset(tempvec,tempvec=="unassigned"))
-      Allaboveunstim=length(tempvectot)-length(subset(tempvectot,tempvectot=="unassigned"))
-      CD4US_t2[k]=0
-      AllUS_t2[k]=0
-      if(Ncellstotunstim>0){
-        
-          CD4US_t2[k]=(Ncellsaboveunstim/Ncellstotunstim)*100
-          AllUS_t2[k]=(Allaboveunstim/Ncellstotunstim)*100
-        
-      }
-    }
-    
-    if(length(intersect(Clonotypes_data$cdr3[k],TCRsunstimT2))>0){
-      tempvec=subset(CD8dfunstim_t2,clonotype==Clonotypes_data$cdr3[k])$mark
-      tempvectot=subset(dfunstim_t2,clonotype==Clonotypes_data$cdr3[k])$mark
-      Ncellstotunstim=length(tempvectot)
-      Ncellsaboveunstim=length(tempvec)-length(subset(tempvec,tempvec=="unassigned"))
-      CD8US_t2[k]=0
-      if(Ncellstotunstim>0){
-        
-          CD8US_t2[k]=(Ncellsaboveunstim/Ncellstotunstim)*100
-        
-      }
-    }
-    
-    if(length(intersect(Clonotypes_data$cdr3[k],TCRcmvT2))>0){
-      tempvec=subset(CD4dfcmv_t2,clonotype==Clonotypes_data$cdr3[k])$mark
-      tempvectot=subset(dfcmv_t2,clonotype==Clonotypes_data$cdr3[k])$mark
-      Ncellstotcmv_sct=length(tempvectot)
-      Ncellsabovecmv_sct=length(tempvec)-length(subset(tempvec,tempvec=="unassigned"))
-      Allaboveunstim=length(tempvectot)-length(subset(tempvectot,tempvectot=="unassigned"))
-      CD4CMV_t2[k]=0
-      AllCMV_t2[k]=0
-      if(Ncellstotcmv_sct>0){
-        
-          CD4CMV_t2[k]=(Ncellsabovecmv_sct/Ncellstotcmv_sct)*100
-          AllCMV_t2[k]=(Allaboveunstim/Ncellstotcmv_sct)*100
-        
-      }
-    }
-    
-    if(length(intersect(Clonotypes_data$cdr3[k],TCRcmvT2))>0){
-      tempvec=subset(CD8dfcmv_t2,clonotype==Clonotypes_data$cdr3[k])$mark
-      tempvectot=subset(dfcmv_t2,clonotype==Clonotypes_data$cdr3[k])$mark
-      Ncellstotcmv_sct=length(tempvectot)
-      Ncellsabovecmv_sct=length(tempvec)-length(subset(tempvec,tempvec=="unassigned"))
-      CD8CMV_t2[k]=0
-      if(Ncellstotcmv_sct>0){
-        
-          CD8CMV_t2[k]=(Ncellsabovecmv_sct/Ncellstotcmv_sct)*100
-        
-      }
-    }
-    
-    if(length(intersect(Clonotypes_data$cdr3[k],TCRebvT2))>0){
-      tempvec=subset(CD4dfebv_t2,clonotype==Clonotypes_data$cdr3[k])$mark
-      tempvectot=subset(dfebv_t2,clonotype==Clonotypes_data$cdr3[k])$mark
-      Ncellstotebv_sct=length(tempvectot)
-      Ncellsaboveebv_sct=length(tempvec)-length(subset(tempvec,tempvec=="unassigned"))
-      Allaboveunstim=length(tempvectot)-length(subset(tempvectot,tempvectot=="unassigned"))
-      CD4EBV_t2[k]=0
-      AllEBV_t2[k]=0
-      if(Ncellstotebv_sct>0){
-        
-          CD4EBV_t2[k]=(Ncellsaboveebv_sct/Ncellstotebv_sct)*100
-          AllEBV_t2[k]=(Allaboveunstim/Ncellstotebv_sct)*100
-        
-      }
-    }
-    
-    if(length(intersect(Clonotypes_data$cdr3[k],TCRebvT2))>0){
-      tempvec=subset(CD8dfebv_t2,clonotype==Clonotypes_data$cdr3[k])$mark
-      tempvectot=subset(dfebv_t2,clonotype==Clonotypes_data$cdr3[k])$mark
-      Ncellstotebv_sct=length(tempvectot)
-      Ncellsaboveebv_sct=length(tempvec)-length(subset(tempvec,tempvec=="unassigned"))
-      CD8EBV_t2[k]=0
-      if(Ncellstotebv_sct>0){
-       
-          CD8EBV_t2[k]=(Ncellsaboveebv_sct/Ncellstotebv_sct)*100
-        
-      }
-    }
-    
-    if(length(intersect(Clonotypes_data$cdr3[k],TCRbkvT2))>0){
-      tempvec=subset(CD4dfbkv_t2,clonotype==Clonotypes_data$cdr3[k])$mark
-      tempvectot=subset(dfbkv_t2,clonotype==Clonotypes_data$cdr3[k])$mark
-      Ncellstotbkv_sct=length(tempvectot)
-      Ncellsabovebkv_sct=length(tempvec)-length(subset(tempvec,tempvec=="unassigned"))
-      Allaboveunstim=length(tempvectot)-length(subset(tempvectot,tempvectot=="unassigned"))
-      CD4BKV_t2[k]=0
-      AllBKV_t2[k]=0
-      if(Ncellstotbkv_sct>0){
-        
-          CD4BKV_t2[k]=(Ncellsabovebkv_sct/Ncellstotbkv_sct)*100
-          AllBKV_t2[k]=(Allaboveunstim/Ncellstotbkv_sct)*100
-        
-      }
-    }
-    
-    if(length(intersect(Clonotypes_data$cdr3[k],TCRbkvT2))>0){
-      tempvec=subset(CD8dfbkv_t2,clonotype==Clonotypes_data$cdr3[k])$mark
-      tempvectot=subset(dfbkv_t2,clonotype==Clonotypes_data$cdr3[k])$mark
-      Ncellstotbkv_sct=length(tempvectot)
-      Ncellsabovebkv_sct=length(tempvec)-length(subset(tempvec,tempvec=="unassigned"))
-      CD8BKV_t2[k]=0
-      if(Ncellstotbkv_sct>0){
-        
-          CD8BKV_t2[k]=(Ncellsabovebkv_sct/Ncellstotbkv_sct)*100
-        
-      }
-    }
-    
-    TotalBKV_t2[k] = Ncellstotbkv_sct
-    TotalCMV_t2[k]=Ncellstotcmv_sct
-    TotalEBV_t2[k]=Ncellstotebv_sct
-    Totalunstim_t2[k]=Ncellstotunstim
-    
   }
   
-  Summarydf=data.frame(Clonotype=Clone,CD4CMV3hr=CD4CMV_t1,CD8CMV3hr=CD8CMV_t1,AllCMV3hr=AllCMV_t1,CD4EBV3hr=CD4EBV_t1,CD8EBV3hr=CD8EBV_t1,AllEBV3hr=AllEBV_t1,CD4BKV3hr=CD4BKV_t1,
-                       CD8BKV3hr=CD8BKV_t1,AllBKV3hr=AllBKV_t1,CD4US3hr=CD4US_t1,CD8US3hr=CD8US_t1,AllUS3hr=AllUS_t1,TotalcellsCMV3hr=TotalCMV_t1,
-                       TotalcellsEBV3hr=TotalEBV_t1,TotalcellsBKV3hr=TotalBKV_t1,Totalcellsunstim3hr=Totalunstim_t1,
-                       CD4CMV6hr=CD4CMV_t2,CD8CMV6hr=CD8CMV_t2,AllCMV6hr=AllCMV_t2,CD4EBV6hr=CD4EBV_t2,CD8EBV6hr=CD8EBV_t2,AllEBV6hr=AllEBV_t2,
-                       CD4BKV6hr=CD4BKV_t2,CD8BKV6hr=CD8BKV_t2,AllBKV6hr=AllBKV_t2,CD4US6hr=CD4US_t2,CD8US6hr=CD8US_t2,AllUS6hr=AllUS_t2,
-                       TotalcellsCMV6hr=TotalCMV_t2,
-                       TotalcellsEBV6hr=TotalEBV_t2,TotalcellsBKV6hr=TotalBKV_t2,Totalcellsunstim6hr=Totalunstim_t2)
+  Summarydf=data.frame(matrix(ncol = conditions*n.batch*4+2, nrow = length(Clone)))
+  Summarydf[,1]=Clone
+  for(q in 1:conditions){
+    for(d in 1:n.batch){
+  
+      Summarydf[,4*((q*n.batch + d)-1)+1]=CD4_c[[q*n.batch + d]]
+      Summarydf[,4*((q*n.batch + d)-1)+2]=CD8_c[[q*n.batch + d]]
+      Summarydf[,4*((q*n.batch + d)-1)+3]=All_c[[q*n.batch + d]]
+      Summarydf[,4*((q*n.batch + d)-1)+4]=Total_c[[q*n.batch + d]]
+      
+    }
+  }
   
   Amino_Acid_seq=rep(0,length(Summarydf$Clonotype))
+  AAs=vector(mode = "list", length = conditions*n.batch)
+  NTs=vector(mode = "list", length = conditions*n.batch)
   
-  AAsEBVT1 = ebv_sct_t1@meta.data$cdr3
-  AAsEBVT2 = ebv_sct_t2@meta.data$cdr3
-  AAsCMVT1 = cmv_sct_t1@meta.data$cdr3
-  AAsCMVT2 = cmv_sct_t2@meta.data$cdr3
-  AAsBKVT1 = bkv_sct_t1@meta.data$cdr3
-  AAsBKVT2 = bkv_sct_t2@meta.data$cdr3
-  AAsUnstimT1 = unstim_t1@meta.data$cdr3
-  AAsUnstimT2 = unstim_t2@meta.data$cdr3
+  for(q in 1:conditions){
+    for(d in 1:n.batch){
+      AAs=Clonal_Obs[[q*n.batch + d]]@meta.data$cdr3
+      NTs=Clonal_Obs[[q*n.batch + d]]@meta.data$cdr3_na
+    }}
   
-  NTsEBVT1 = ebv_sct_t1@meta.data$cdr3_na
-  NTsEBVT2 = ebv_sct_t2@meta.data$cdr3_na
-  NTsCMVT1 = cmv_sct_t1@meta.data$cdr3_na
-  NTsCMVT2 = cmv_sct_t2@meta.data$cdr3_na
-  NTsBKVT1 = bkv_sct_t1@meta.data$cdr3_na
-  NTsBKVT2 = bkv_sct_t2@meta.data$cdr3_na
-  NTsUnstimT1 = unstim_t1@meta.data$cdr3_na
-  NTsUnstimT2 = unstim_t2@meta.data$cdr3_na
-  
+  for(b in 1:conditions){
+    for(d in 1:n.batch){
   for(q in 1:length(Amino_Acid_seq)){
-    if(length(intersect(NTsEBVT1,Summarydf$Clonotype[q]))>0){
-      idx=match(Summarydf$Clonotype[q],NTsEBVT1)
-      Amino_Acid_seq[q]=AAsEBVT1[idx]
+    if(length(intersect(NTs[[b*n.batch + d]],Summarydf$Clonotype[q]))>0){
+      idx=match(Summarydf$Clonotype[q],NTs[[b*n.batch + d]])
+      Amino_Acid_seq[q]=AAs[[b*n.batch + d]][idx]
     }
-    else if(length(intersect(NTsEBVT2,Summarydf$Clonotype[q]))>0){
-      idx=match(Summarydf$Clonotype[q],NTsEBVT2)
-      Amino_Acid_seq[q]=AAsEBVT2[idx]
-    }
-    else if(length(intersect(NTsCMVT1,Summarydf$Clonotype[q]))>0){
-      idx=match(Summarydf$Clonotype[q],NTsCMVT1)
-      Amino_Acid_seq[q]=AAsCMVT1[idx]
-    }
-    else if(length(intersect(NTsCMVT2,Summarydf$Clonotype[q]))>0){
-      idx=match(Summarydf$Clonotype[q],NTsCMVT2)
-      Amino_Acid_seq[q]=AAsCMVT2[idx]
-    }
-    else if(length(intersect(NTsBKVT1,Summarydf$Clonotype[q]))>0){
-      idx=match(Summarydf$Clonotype[q],NTsBKVT1)
-      Amino_Acid_seq[q]=AAsBKVT1[idx]
-    }
-    else if(length(intersect(NTsBKVT2,Summarydf$Clonotype[q]))>0){
-      idx=match(Summarydf$Clonotype[q],NTsBKVT2)
-      Amino_Acid_seq[q]=AAsBKVT2[idx]
-    }
-    else if(length(intersect(NTsUnstimT1,Summarydf$Clonotype[q]))>0){
-      idx=match(Summarydf$Clonotype[q],NTsUnstimT1)
-      Amino_Acid_seq[q]=AAsUnstimT1[idx]
-    }
-    else if(length(intersect(NTsUnstimT2,Summarydf$Clonotype[q]))>0){
-      idx=match(Summarydf$Clonotype[q],NTsUnstimT2)
-      Amino_Acid_seq[q]=AAsUnstimT2[idx]
-    }
+    
     else{
       print("Error no matching TCR found")
     }
   }
-  
-  names(Summarydf) <- c("Clone","3hr CD4 high CMV (%)","3hr CD8 high CMV (%)","3hr cells high CMV (%)"
-                        ,"3hr CD4 high EBV (%)","3hr CD8 high EBV (%)","3hr cells high EBV (%)","3hr CD4 high BKV (%)",
-                        "3hr CD8 high BKV (%)","3hr cells high BKV (%)", "3hr CD4 high US (%)",
-                        "3hr CD8 high US (%)","3hr cells high US (%)","3hr Total cells CMV","3hr Total cells EBV",
-                        "3hr Total cells BKV","3hr Total cells US",
-                        "6hr CD4 high CMV (%)","6hr CD8 high CMV (%)","6hr cells high CMV (%)",
-                        "6hr CD4 high EBV (%)","6hr CD8 high EBV (%)","6hr cells high EBV (%)","6hr CD4 high BKV (%)",
-                        "6hr CD8 high BKV (%)","6hr cells high BKV (%)","6hr CD4 high US (%)",
-                        "6hr CD8 high US (%)","6hr cells high US (%)","6hr Total cells CMV","6hr Total cells EBV",
-                        "6hr Total cells BKV","6hr Total cells US")
-  
-  Summarydf$Amino_acid=Amino_Acid_seq
+    }}
+ 
+  Summarydf[,4*(conditions*n.batch)+2]=Amino_Acid_seq
+  names(Summarydf) <- names.spreadsheet
   write.csv(Summarydf,clonotype_path)
-  
-  
   
 }
