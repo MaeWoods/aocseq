@@ -1,75 +1,37 @@
 #%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 # Functions
 #%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-#' Combine single cell data and annotate with cell labels based on functionality
+#' List clonotypes and the proportion of cells expressing a choice of marker genes
 #'
-#' This function will read in Seurat objects processed by traceseq and generate a 
-#' spreadsheet of clonotypes grouped by CDR3 beta sequence that displays the 
-#' percentage of CD4 and CD8 cells with transcript expression that is greater than
-#' the quantile cutoff of the control set in CombineData. A gene list used to estimate 
-#' specificity can be chosen and is application specific. Other parameters are listed 
-#' for debugging, but can be left as default values.
+#' This function will read in Seurat objects processed by traceseq::CombineData 
+#' and generate a ranked spreadsheet of clonotypes grouped by CDR3 beta sequence that 
+#' displays the percentage of CD4 and CD8 cells with transcript expression that 
+#' is greater than the quantile cutoff of the control set in traceseq::CombineData. 
+#' A gene list used to estimate specificity can be chosen and is application specific. 
+#' Other parameters are listed for debugging, but can be left as default values.
 #'
-#' @param gex.path path to gene expression data in the format of cellranger feature barcode matrices
-#' @param vdj.path path to VDJ expression data in the format of cellranger csv files 
-#' @param marker.gene list of marker genes used for specificity analysis
-#' @param mask listing of genes to be dropped from analysis
-#' @param save.dir directory for storing Seurat object RDS files
-#' @param index.control index of the control sequencing sample
-#' @param demultiplex Boolean value used to indicate if the data was hashtagged
-#' @param hashtags Integer represents the number of hashtags used (if any)
-#' @param verbose Print progress bars and output
-#'
-#' @return A Seurat object list containing metadata and VDJ annotations.
+#' @param Clonal_Obs A Seurat object pre-processed with traceseq::CombineData.
+#' @param moi A marker of interest.
+#' @param moipos Index of the moi in the complete marker list.
+#' @param clonotype_path path for output of the clonotype spreadsheet.
+#' @param n.batch Number of batches for each condition.
+#' @param conditions Index of the control sequencing sample.
+#' @param threshold.cutoff List. Percentile used for specifying high versus low expression
+#' for each condition.
+#' @param index.control List. Index of the control sequencing sample for each condition.
+#' @param names.spreadsheet List. Control and sample names.
+#' @param preset Bool. If set to 1, the control is part of the dataset. If 0, a threshold 
+#' value for each condition must be set. 
+#' @param threshold.entry List. List of thresholds for each condition if preset is 0.
+#' @return A data frame containing clonotypes and summary statistics of transcript expression.
 #' @concept annotation
 #' @export
 #'
-
-
-ThreeHourStim=TetAssay
-SixHourStim=readRDS("../RDS/SixHourStim.rds")
-
-markerGene=c("IFNG","CRTAM","CD69","TNF","CD70","TNFRSF9")
-
-moi="TNFRSF9"
-clonotype_path="../SupplementaryTables/SummaryTNFRSF9_2_5%.csv"
-cell_path="../SupplementaryTables/Cells.csv"
-moipos=6
-AnnotateClonotypes(ThreeHourStim,SixHourStim,moi,clonotype_path,cell_path,moipos)
-
-
-moi="CD70"
-clonotype_path="../SupplementaryTables/SummaryCD70_2_5%.csv"
-cell_path="../SupplementaryTables/Cells.csv"
-moipos=5
-AnnotateClonotypes(ThreeHourStim,SixHourStim,moi,clonotype_path,cell_path,moipos)
-
-moi="TNF"
-clonotype_path="../SupplementaryTables/SummaryTNF_2_5%.csv"
-cell_path="../SupplementaryTables/Cells.csv"
-moipos=4
-AnnotateClonotypes(ThreeHourStim,SixHourStim,moi,clonotype_path,cell_path,moipos)
-
-
-moi="CD69"
-clonotype_path="../SupplementaryTables/SummaryCD69_2_5%.csv"
-cell_path="../SupplementaryTables/Cells.csv"
-moipos=3
-AnnotateClonotypes(ThreeHourStim,SixHourStim,moi,clonotype_path,cell_path,moipos)
-
-
-moi="CRTAM"
-clonotype_path="../SupplementaryTables/SummaryCRTAM_2_5%.csv"
-cell_path="../SupplementaryTables/Cells.csv"
-moipos=2
-AnnotateClonotypes(ThreeHourStim,SixHourStim,moi,clonotype_path,cell_path,moipos)
-
 
 moi="IFNG"
 clonotype_path="../SupplementaryTables/Tetramer/SummaryIFNG_2_5%.csv"
 cell_path="../SupplementaryTables/Tetramer/Cells.csv"
 moipos=1
-
 index.control=1
 threshold.cutoff=.975
 n.batch=2
@@ -84,18 +46,39 @@ names.spreadsheet = c("Clone","3hr CD4 high CMV (%)","3hr CD8 high CMV (%)","3hr
                       "6hr CD8 high US (%)","6hr cells high US (%)","6hr Total cells CMV","6hr Total cells EBV",
                       "6hr Total cells BKV","6hr Total cells US")
 
-AnnotateClonotypes(ThreeHourStim,ThreeHourStim,moi,clonotype_path,cell_path,moipos)
+AnnotateClonotypes(Clonal_Obs,moi,clonotype_path,moipos,n.batch,threshold.cutoff,index.control,conditions,names.spreadsheet)
 
 
-AnnotateClonotypes <- function(Clonal_Obs,moi,clonotype_path,moipos,n.batch,threshold.cutoff,index.control,conditions,names.spreadsheet){
+AnnotateClonotypes <- function(
+    Clonal_Obs,
+    moi,
+    moipos,
+    clonotype_path,
+    n.batch,
+    conditions,
+    threshold.cutoff,
+    index.control,
+    names.spreadsheet,
+    preset=1,
+    threshold.entry=FALSE
+){
   
-  #match markers of interest
-  
-  unstim_t1 <- Clonal_Obs[[q*n.batch + k]]
+  moi_samp=vector(mode = "list", length = conditions*n.batch)
+  cutoff=vector(mode = "list", length = conditions)
+  #match moi
+  for(q in 1:conditions){
+    for(k in 3:n.batch){
   moi_samp[[q*n.batch + k]]=match(moi, row.names(Clonal_Obs[[q*n.batch + k]][["SCT"]]@data))
+  if(preset==1){
   cutoff[[q]]=quantile(Clonal_Obs[[index.control[[q]]]][["SCT"]]@data[moi_samp[[q*n.batch + k]],],threshold.cutoff)[[1]]
-  
-  #probably end loop here
+  }
+  else{
+    cutoff[[q]]=threshold.entry[q]
+    
+  }
+  }
+  }
+  #Find intersection and union of all clonotypes
   allclonotypes = union(Clonal_Obs[[1]]@meta.data$cdr3_na,Clonal_Obs[[2]]@meta.data$cdr3_na)
   intersectclonotypes=intersect(Clonal_Obs[[1]]@meta.data$cdr3_na,Clonal_Obs[[2]]@meta.data$cdr3_na)
   for(q in 1:conditions){
@@ -110,11 +93,15 @@ AnnotateClonotypes <- function(Clonal_Obs,moi,clonotype_path,moipos,n.batch,thre
   
   sample.clonotypes=vector(mode = "list", length = conditions*n.batch)
   
+  if(preset==1){
   sample.clonotypes[[index.control[[1]]]]=setdiff(levels(factor(Clonal_Obs[[index.control[[q]]]]@meta.data$cdr3_na)),"unassigned")
   combine.clonotypes = sample.clonotypes[[index.control[[1]]]]
+  }else{
+  combine.clonotypes = sample.clonotypes[[1]]
+  }
   for(q in 1:conditions){
     for(k in 3:n.batch){
-      if(index.control[[1]]!=q*n.batch + k){
+      if(((preset==1)&(index.control[[1]]!=q*n.batch + k))|((preset==0)&(index.control[[1]]!=q*n.batch + k))){
       f=q*n.batch + k
       sample.clonotypes[[index.control[[f]]]]=setdiff(setdiff(levels(factor(Clonal_Obs[[index.control[[f]]]]@meta.data$cdr3_na)),"unassigned"),combine.clonotypes)
       combine.clonotypes=union(combine.clonotypes,sample.clonotypes[[index.control[[f]]]])
@@ -129,7 +116,7 @@ AnnotateClonotypes <- function(Clonal_Obs,moi,clonotype_path,moipos,n.batch,thre
   Clonefreq=rep(0,NClonotypes)
   for(k in 1:NClonotypes){
     for(q in 1:conditions){
-      for(d in 3:n.batch){
+      for(d in 1:n.batch){
     if(length(intersect(allclonotypes[k],sample.clonotypes[[q*n.batch + d]]))>0){
       Clonefreq[k]=subset(Clonal_Obs[[q*n.batch + d]],cdr3_na==allclonotypes[k])@meta.data$countcln[1]
       if(length(intersect(allclonotypes[k],intersectclonotypes))>0){
@@ -159,7 +146,7 @@ AnnotateClonotypes <- function(Clonal_Obs,moi,clonotype_path,moipos,n.batch,thre
   CD8df=vector(mode = "list", length = conditions*n.batch)
   Alldf=vector(mode = "list", length = conditions*n.batch)
   for(q in 1:conditions){
-    for(d in 3:n.batch){
+    for(d in 1:n.batch){
       CD4_c[[q*n.batch + d]]=rep(0,length(allclonotypes))
       CD8_c[[q*n.batch + d]]=rep(0,length(allclonotypes))
       All_c[[q*n.batch + d]]=rep(0,length(allclonotypes))
@@ -182,6 +169,8 @@ AnnotateClonotypes <- function(Clonal_Obs,moi,clonotype_path,moipos,n.batch,thre
     Ncellsaboveebv_sct=0
     Ncellstotbkv_sct=0
     Ncellsabovebkv_sct=0
+    for(q in 1:conditions){
+      for(d in 1:n.batch){
     tempvec=subset(CD4df[[q*n.batch + d]],clonotype==Clonotypes_data$cdr3[k])$mark
     tempvectot=subset(Alldf[[q*n.batch + d]],clonotype==Clonotypes_data$cdr3[k])$mark
     if(length(intersect(Clonotypes_data$cdr3[k],TCR_seq[[q*n.batch + d]]))>0){
@@ -197,6 +186,7 @@ AnnotateClonotypes <- function(Clonal_Obs,moi,clonotype_path,moipos,n.batch,thre
         
       }
     }
+      
     
     tempvec=subset(CD8df[[q*n.batch + d]],clonotype==Clonotypes_data$cdr3[k])$mark
     tempvectot=subset(Alldf[[q*n.batch + d]],clonotype==Clonotypes_data$cdr3[k])$mark
@@ -214,6 +204,8 @@ AnnotateClonotypes <- function(Clonal_Obs,moi,clonotype_path,moipos,n.batch,thre
     
     Total_c[[q*n.batch + d]][k]=Ncellstotunstim
     Ncellstotunstim=0
+      }
+    }
   }
   
   Summarydf=data.frame(matrix(ncol = conditions*n.batch*4+2, nrow = length(Clone)))
