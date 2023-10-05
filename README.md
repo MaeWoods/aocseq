@@ -1,4 +1,4 @@
-# Traceseq 0.0.1: Gene set tracing for the identification of cells in mixed populations with variable sequences. Based on T cell recptor activation and single cell pathway analysis
+# Traceseq 0.0.1: Gene set tracing for the classification of cells in mixed populations. Based on T cell recptor activation and single cell pathway analysis
 
 **traceseq** is for analysis of multimodal immunosequencing data and can be used to predict and trace recently stimulated T cells in the blood with their gene expression transcripts. 
 
