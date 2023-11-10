@@ -1,28 +1,28 @@
-# Traceseq 0.0.1: Gene set tracing for the classification of cells in mixed populations. Based on T cell recptor activation and single cell pathway analysis
+# aocseq 0.0.1: Activation of cells & sequencing for the classification of cells in mixed populations. Based on T cell recptor activation and single cell pathway analysis
 
-**traceseq** is for analysis of multimodal immunosequencing data and can be used to predict and trace recently stimulated T cells in the blood with their gene expression transcripts. 
+**aocseq** is for analysis of multimodal immunosequencing data and can be used to predict and trace recently stimulated T cells in the blood with their gene expression transcripts. 
 
-The aim of the tool is rapid quantification of cells that are activated through the binding of their T cell receptor (TCR) to the cognate antign, either in an immunotherapy or after infusion when administered as therapy and the therapeutic cells are mixed with peripheral blood. Designed to be compatible with single cell gene expression array data, if cells are barcoded by their T cell receptor (TCR), unique clones with target specificity can be identified by their gene expression. Therefore the tool serves in addition as a method to identify new neoantigen specific TCRs. For time series analysis, the CDR3 TCRbeta dataset of a TCR repertoire in the format of nucleic acid sequence productive frequency, the corresponding amino acid sequences and the total number of T cells at each time point are required. The data can be from multiple conditions or treatments and include multiple time points. 
+The aim of the tool is rapid quantification of cells that are activated through the binding of their T cell receptor (TCR) to the cognate antigen, either in an immunotherapy or after infusion when administered as therapy and the therapeutic cells are mixed with peripheral blood. Designed to be compatible with single cell gene expression array data, if cells are barcoded by their T cell receptor (TCR), unique clones with target specificity can be identified by their gene expression. Therefore the tool serves in addition as a method to identify new neoantigen specific TCRs. For time series analysis, the CDR3 TCRbeta dataset of a TCR repertoire in the format of nucleic acid sequence productive frequency, the corresponding amino acid sequences and the total number of T cells at each time point are required. The data can be from multiple conditions or treatments and include multiple time points. 
 # Biological motivation
 The TCR sequence is important to study because T cell specificity depends on the **CDR3** region of the TCR and this varys in sequence between different people and single cells. T cells can be grouped into clonotypes that share a common CDR3 beta chain and this way, used to estimate the frequency of target specific T cells in the blood. Harnessing this heterogeneity in sequence between T cells for a quantitative analysis of adaptive immunology has broad applicability in immunology and immunotherapy because the clearing of infection and cancer depends on availability of immune cells (including T cells) with capacity to mount a response. 
-Immunosequencing is a PCR-based based method that exploits the capacity of high-throughput sequencing technology to characterize tens of thousands of TCR CDR3 chains simultaneously and **traceseq** has been developed to efficiently analyse and annotate this data.
+Immunosequencing is a PCR-based based method that exploits the capacity of high-throughput sequencing technology to characterize tens of thousands of TCR CDR3 chains simultaneously and **aocseq** has been developed to analyse and annotate this data.
 
-Specifically, this is a software package of statistical tools that can be used to trace, analyse, annotate and query clonotypes subject to amplification or reduction in frequency following antigen stimulation or between experimental conditions. **traceseq** has initially been applied to Virus specific T cells (VSTs) because these clinical blood products contain non specific bystander T cells in addition to potent virus specific clonotypes. However, the tool can be adapted to model other barcoded time series frequency data and the accompanying vignette demonstrates how the tool could be used to track clonotypes *in vivo*, using Adaptive's ImmuneAccess database. 
+Specifically, this is a software package of statistical tools that can be used to trace, analyse, annotate and query clonotypes subject to amplification or reduction in frequency following antigen stimulation or between experimental conditions. **aocseq** has initially been applied to Virus specific T cells (VSTs) because these clinical blood products contain non specific bystander T cells in addition to potent virus specific clonotypes. However, the tool can be adapted to model other barcoded time series frequency data and the accompanying vignette demonstrates how the tool could be used to track clonotypes *in vivo*, using Adaptive's ImmuneAccess database. 
 
 # Installation and running the software: 
 
-install_github("MaeWoods/traceseq");
+install_github("MaeWoods/aocseq");
 
-library("traceseq")
+library("aocseq")
 
 Steps to run the software are illustrated below in the flow chart and functions are documented in detail in the manual. Single cel
-Sequence and time series data are imported along with total T cell numbers at each time point.  **traceseq** is different to alternative TCR frequencing tracking methods because instead of setting a difference in frequency to label cells *a priori*, or modelling the probability of cell capture as a binomial distribution, **traceseq** is Bayesian, in the sense that the frequency of all clonotypes at all time points are included in a statistical model to fit the average expansion of all clonotypes within a product over time. From this model, individual clonotypes can be classified as it is common for clonotypes to fall below the limit of detection in time series immunosequencing experiments model and the tool is designed to model this by including drop out events.
+Sequence and time series data are imported along with total T cell numbers at each time point.  **aocseq** is different to alternative TCR frequencing tracking methods because instead of setting a difference in frequency to label cells *a priori*, or modelling the probability of cell capture as a binomial distribution, **aocseq** is Bayesian, in the sense that the frequency of all clonotypes at all time points are included in a statistical model to fit the average expansion of all clonotypes within a product over time. From this model, individual clonotypes can be classified as it is common for clonotypes to fall below the limit of detection in time series immunosequencing experiments model and the tool is designed to model this by including drop out events.
 
 Results of VRTrack provide additional to extrapolate the CDR3 sequences of T cell clonotypes with the greatest expansion, annotates these clonotypes with sequence metadata so that the frequency of clonotypes that share the same amino acid sequence (homoplastic frequency) can be jointly merged with expansion, queried in online databases and included as additional metadata in a single cell RNA sequencing (scRNAseq) experiment.
 
-<img src="Traceseq.png" width="100%"></img>
+<img src="aocseq.png" width="100%"></img>
 
-Flow chart showing traceseq usage  “Created in Lucidchart, www.lucidchart.com”.
+Flow chart showing aocseq usage  “Created in Lucidchart, www.lucidchart.com”.
 
 # Getting started: 
 Initial preprocessing of gene expression arrays with cell type annotation is provided in the function CombineData, outputs are compatible with the environments single cell experiment, Seurat and scanpy. There are several options for quality control during the combine data process, however the reader is encouraged to  Total numbers $(n)$ of T cells for each condition and time point must be included as a vector. The numbers should be listed in sequential order of time points and the ordering of the conditions should not change between time points, for example for $j$ conditions $n_{1}-n_{j}$ over $k$ time points $n_{1}(1)-n_{j}(k)$, the input vector should be in the form $$N=(n_{1}(1),n_{2}(1),...,n_{j}(1),...,n_{1}(k),n_{2}(k),...,n_{j}(k)).$$ If importing an Adaptive TCR immunoseq assay, the input files are the track rearrangements files for both the nucleic acid and amino acid sequences and the rearrangements file. For alternative data, matrices must be included in a specific format. Two matrices are required for input, one with the CDR3 sequence in amino acids and another with the CDR3 sequence in nucleic acids. Rows of the matrix must correspond to unique TCRBeta CDR3s and columns of the matrix should correspond to the TCR repertoire for each sample so that elements of the matrix are the productive frequency of each rearrangement for each sample.
@@ -35,7 +35,7 @@ where $a_{qj}(k)$ is the frequency of the $q$th TCR in the $j$th condition at ti
 
 
 # Documentation: 
-traceseq can be used following the flow chart above, to read in the data and create a clonal object with CDR3 annotations and time series productive frequency, run the function CreateClonalObject().
+aocseq can be used following the flow chart above, to read in the data and create a clonal object with CDR3 annotations and time series productive frequency, run the function CreateClonalObject().
 
 cp paste the function definitions
 
