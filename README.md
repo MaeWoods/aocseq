@@ -14,6 +14,7 @@ Specifically, this is a software package of statistical tools that can be used t
 install_github("MaeWoods/aocseq");
 
 library(Seurat)
+
 library("aocseq")
 
 Steps to run the software are illustrated below in the flow chart and functions are documented in detail in the manual. Single cel
