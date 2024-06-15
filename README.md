@@ -1,4 +1,4 @@
-# aocseq 0.0.1: Activation of cells & sequencing for the classification of cells in mixed populations. Based on T cell recptor activation and single cell pathway analysis
+# aocseq 0.1.0: Activation of cells & sequencing for the classification of cells in mixed populations. Based on T cell recptor activation and single cell pathway analysis
 
 **aocseq** is for analysis of multimodal immunosequencing data and can be used to predict and trace recently stimulated T cells in the blood with their gene expression transcripts. 
 
