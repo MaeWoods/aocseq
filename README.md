@@ -17,7 +17,7 @@ library(Seurat)
 
 library("aocseq")
 
-Steps to run the software are illustrated below in the flow chart and functions are defined in the documentation. The fuctionality circled with the dashed line is available in version 0.1.0 of the software. 
+Steps to run the software are illustrated below in the flow chart and functions are defined in the documentation. The fuctionality circled with the dashed line is available in version 0.1.0 of the software. Please see the **vignettes** for further help loading and running the software.
 
 
 <img src="aocseq.png" width="100%"></img>
