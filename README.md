@@ -17,7 +17,7 @@ library(Seurat)
 
 library("aocseq")
 
-Steps to run the software are illustrated below in the flow chart and functions are defined in the documentation. The fuctionality circled with the dashed ine is availabe in version 0.1.0 of the software. 
+Steps to run the software are illustrated below in the flow chart and functions are defined in the documentation. The fuctionality circled with the dashed line is available in version 0.1.0 of the software. 
 
 
 <img src="aocseq.png" width="100%"></img>
@@ -33,7 +33,7 @@ Columns should be organised in the same way as the cell number input, i.e. by tr
 
 $$M=\begin{bmatrix}a_{11}(1) & a_{12}(1) & ... & a_{1j}(1) & ... & a_{11}(k) & a_{12}(k) & ... & a_{1j}(k) \\\ a_{21}(1) & a_{22}(1) & ... & a_{2j}(1) & ... & a_{21}(k) & a_{22}(k) & ... & a_{2j}(k) \\\ \vdots & \vdots & & \vdots & \ddots & \vdots & \vdots& & \vdots \\\a_{q1}(1) & a_{q2}(1) & ... & a_{qj}(1) & ... & a_{q1}(k) & a_{q2}(k) & ... & a_{qj}(k) \end{bmatrix},$$
 
-where $a_{qj}(k)$ is the frequency of the $q$th TCR in the $j$th condition at time point $k$.
+where $a_{qj}(k)$ is the frequency of the $q\mbox{th}$ TCR in the $j\mbox{th}$ condition at time point $k$.
 
 
 # Documentation: 
