@@ -1,6 +1,6 @@
 # aocseq 0.1.0: An R package for mixed cell type annotation following the activation of cells & sequencing.
 
-**aocseq** is for analysis of multimodal immunosequencing data and can be used to predict and trace recently stimulated T cells in the blood with their gene expression transcripts. 
+**aocseq** is a suite of statistical tools that can be used for analysis of multimodal immunosequencing data and can be used to predict and trace recently stimulated T cells in the blood with their gene expression transcripts. 
 
 The aim of the tool is to provide a suite of statistical methods based on control theory for the classification and scoring of cells with optimal characteristics. Characteristics are defined by the gene expression of cells that are considered desirable by their response to perturbation. Version 0.1.0 can be used to quantify cells that are activated through the binding of their T cell receptors (TCRs) to the cognate antigens. Thus providing a method to identify full length TCRs with specificity directed towards a target antigen, that can then be tested for use as transgenes. In a later update, functionality for time series analysis will be included to analyze changes in clone frequency in the TCR repertoire in the format of nucleic acid sequence productive frequency, the corresponding amino acid sequences and the total number of T cells. Currently, the data can be from multiple conditions or treatments, hashtagged and include multiple time points. 
 # Biological motivation
