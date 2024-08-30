@@ -1,0 +1,4 @@
+exportPattern("^[[:alpha:]]+")
+importFrom("stats", "dnorm", "kmeans", "median", "na.omit", "p.adjust",
+               "pchisq", "plogis", "quantile", "runif", "sd", "var")
+importFrom("utils", "read.csv", "write.csv")
