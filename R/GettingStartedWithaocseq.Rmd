@@ -1,0 +1,89 @@
+---
+title: "Getting started with aocseq"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{vignette}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+library(aocseq)
+```
+
+## Trace sequencing
+
+The package `"aocseq"` is a set of scripts that are designed to trace (among heterogenous cells) the expression of a set of genes that are functional bio-markers, in the sense that they are transiently co-expressed in a single cell and for a fixed duration of time.
+
+## Loading the library and reading in the data with `CombineData`
+
+Load the libraries for the package traceseq
+
+```{r}
+suppressMessages(library(aocseq))
+```
+
+The first step is to import single cell and (in the case of T cell activation and stimulation) VDJ contig files. In this example, 10X genomics feature barcode matrices are imported along with the contig_annotations_file.csv. Let's import a three hour stimulation assay. traceseq allows the selection of marker genes to compute their expression in a subset of cells
+
+```{r, eval = F}
+marker.gene=c("IFNG","TNF")
+```
+there are two conditions in our batch and the first condition is our control. We can specify a save directory for the RDS file.
+
+```{r, eval = F}
+save.dir="RDS/scAssay.rds"
+```
+
+and we have to specify the gene expression and VDJ path
+```{r, eval = F}
+gex.path=list("SeqData/gex/Control","SeqData/gex/CMV")
+vdj.path=list("SeqData/vdj/Control/all_contig_annotations.csv","SeqData/vdj/CMV/all_contig_annotations)
+```
+              
+After specifying the inputs we can run CombineData
+
+```{r, eval = F}
+scData <- CombineData(gex.path,vdj.path, marker.gene)
+```
+
+## Labelling subsets `AnnotateClonotypes`
+
+AnnotateClonotypes summarizes and consolidates clonotypes (or cell types) across multiple samples. First we have to specify the Clonal Object
+
+```{r, eval = F}
+Clonal_Obs=readRDS("RDS/scData.rds")
+```
+
+We also need to specify and make a directory to store the summary data sheet
+
+```{r, eval = F}
+mypath="SummaryTables/scData"
+mynames.spreadsheet = c("Control","CMV")
+```
+
+After this, we can call the function
+```{r, eval = F}
+AnnotateClonotypes(Clonal_Obs,goi="IFNG",goi.threshold=0.975,path=mypath,names.spreadsheet=mynames.spreadsheet)
+```
+
+## Classify cells based on their expression of the gene signature `ClassifyClonotypes`
+
+Similarly to AnnotateClonotypes, you will need to specify a path to where you will save your data
+
+```{r, eval = F}
+myClonotypes=read_csv("SummaryTables/scDataIFNG/SummaryTable.csv")
+mypath="SummaryTables/scData"
+```
+
+then run the function
+
+```{r, eval = F}
+ClassifyClonotypes(Clonal_Obs,myClonotypes,path=mypath)
+```
