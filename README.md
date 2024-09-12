@@ -36,6 +36,9 @@ Initial preprocessing of gene expression arrays with cell type annotation is pro
 To read in gene expression data and analyze clonotypes:
 [Getting started with aocseq](./html/GettingStartedWithaocseq.svg)
 
+To read in data containing citeseq hashtags, demultiplex, and analyze surface marker expression:
+[Using aocseq for hashtagged data](./html/GettingStartedWithaocseq.svg)
+
 **Immunosequencing**
 
 Functionality for time series analysis will be included to analyze changes in clone frequency in the TCR repertoire in the format of nucleic acid sequence productive frequency, the corresponding amino acid sequences and the total number of T cells. Currently, the data can be from time series, multiple conditions or treatments.
