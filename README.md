@@ -30,7 +30,7 @@ Initial preprocessing of gene expression arrays with cell type annotation is pro
 To read in gene expression data and analyze clonotypes
 [Getting started with aocseq](http://html/GettingStartedWithaocseq.html)
 
-![](./html/GettingStartedWithaocseq.svg)
+[vignette](./html/GettingStartedWithaocseq.svg)
 
 
 <svg width="100" height="100" xmlns="http://www.w3.org/2000/svg">
