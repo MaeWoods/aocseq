@@ -6,7 +6,11 @@ The purpose of this statistical tool is to quantify single cell data and provide
 
 # Research applications
 
-The software combines probability and control theory with existing single cell analysis software for the classification of cells. Ultimately the aim is to provide a flexible framework that can be used to analyze a broad range of functional experiments that produce multi-modal data consisting of multiple different cell types. For a list of applications, see the section **Getting started** for the vignettes or the [slide deck](https://github.com/MaeWoods/aocseq/raw/main/SlideDeck.pdf) listing the functions. The sofware was initially developed to identify receptor sequences from functional experiments. Specifically Version 0.1.0 has been used to quantify cells that are activated through the binding of their T cell receptors (TCRs) to the cognate antigens. Therefore, the tool provides a method to identify full length TCRs with specificity directed toward a target antigen, that can then be tested for use as transgenes. However the aim is to develop functionality for the analysis of a broad range of sequencing of polyclonal data.
+The software combines probability and control theory with existing single cell analysis software for the classification of cells. Ultimately the aim is to provide a flexible framework that can be used to analyze a broad range of functional experiments that produce multi-modal data consisting of multiple different cell types. For a list of applications, see the section **Getting started** for the vignettes or the [slide deck](https://github.com/MaeWoods/aocseq/raw/main/SlideDeck.pdf) listing the functions. 
+
+# Purpose of initial package development
+
+The sofware was initially developed to identify receptor sequences from functional experiments. Specifically Version 0.1.0 has been used to quantify cells that are activated through the binding of their T cell receptors (TCRs) to the cognate antigens. Therefore, the tool provides a method to identify full length TCRs with specificity directed toward a target antigen, that can then be tested for use as transgenes. However the aim is to develop functionality for the analysis of a broad range of sequencing of polyclonal data.
 
 **Introduction to TCR sequencing**
 
