@@ -34,8 +34,9 @@ Initial preprocessing of gene expression arrays with cell type annotation is pro
 To read in gene expression data and analyze clonotypes:
 [Getting started with aocseq](./html/GettingStartedWithaocseq.svg)
 
+**Immunosequencing**
 
-In a later update, functionality for time series analysis will be included to analyze changes in clone frequency in the TCR repertoire in the format of nucleic acid sequence productive frequency, the corresponding amino acid sequences and the total number of T cells. Currently, the data can be from multiple conditions or treatments, hashtagged and include multiple time points.
+Functionality for time series analysis will be included to analyze changes in clone frequency in the TCR repertoire in the format of nucleic acid sequence productive frequency, the corresponding amino acid sequences and the total number of T cells. Currently, the data can be from time series, multiple conditions or treatments.
 
 If importing immunoseq data without single cell RNA or hashtagged sequencing, outputs of aocseq are compatible with the environments single cell experiment, Seurat and scanpy but are stored in S4 objects that can be added to an S4 object of class Seurat. If importing an Adaptive TCR immunoseq assay, total numbers $(n)$ of T cells for each condition and time point must be included as a vector. The numbers should be listed in sequential order of time points and the ordering of the conditions should not change between time points, for example for $j$ conditions $n_{1}-n_{j}$ over $k$ time points $n_{1}(1)-n_{j}(k)$, the input vector should be in the form $$N=(n_{1}(1),n_{2}(1),...,n_{j}(1),...,n_{1}(k),n_{2}(k),...,n_{j}(k)).$$ The input files are the track rearrangements files for both the nucleic acid and amino acid sequences and the rearrangements file. For alternative data, matrices must be included in a specific format. Two matrices are required for input, one with the CDR3 sequence in amino acids and another with the CDR3 sequence in nucleic acids. Rows of the matrix must correspond to unique TCRBeta CDR3s and columns of the matrix should correspond to the TCR repertoire for each sample so that elements of the matrix are the productive frequency of each rearrangement for each sample.
 
@@ -47,4 +48,6 @@ where $a_{qj}(k)$ is the frequency of the $q\mbox{th}$ TCR in the $j\mbox{th}$ c
 
 
 # Documentation: 
-The aocseq package contains documentation and a set of vignettes are being developed to demonstrate the processing of hashtagged data, immunosequencing data and single cell RNA sequencing data.
+
+* [slide deck](https://github.com/MaeWoods/aocseq/raw/main/SlideDeck.pdf)
+* [documentation](https://github.com/MaeWoods/aocseq/raw/main/documentation.pdf)
