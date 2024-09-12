@@ -25,7 +25,22 @@ Steps to run the software are illustrated below in the flow chart and functions 
 Flow chart showing aocseq usage  “Created in Lucidchart, www.lucidchart.com”.
 
 # Getting started: 
-Initial preprocessing of gene expression arrays with cell type annotation is provided in the function CombineData, 
+Initial preprocessing of gene expression arrays with cell type annotation is provided in the function CombineData. aocseq can be used to analyze data in the form of VDJ enrichment, immunoprofiling, Multiplex data, Hash tagged data and Cell surface labelling. Examples are provided below with accompanying vignettes
+
+To read in gene expression data and analyze clonotypes
+[Getting started with aocseq](http://html/GettingStartedWithaocseq.html)
+
+
+<svg width="100" height="100" xmlns="http://www.w3.org/2000/svg">
+<foreignObject width="100" height="100">
+    <div xmlns="http://github.com/MaeWoods/aocseq/tree/main/html/GettingStartedWithaocseq.html">
+        <ul>
+            <li>text</li>
+        </ul>
+        <!-- Other embed HTML element/text into SVG -->
+    </div>
+</foreignObject>
+</svg>
 
 If importing immunoseq data without single cell RNA or hashtagged sequencing, outputs of aocseq are compatible with the environments single cell experiment, Seurat and scanpy but are stored in S4 objects that can be added to an S4 object of class Seurat. If importing an Adaptive TCR immunoseq assay, total numbers $(n)$ of T cells for each condition and time point must be included as a vector. The numbers should be listed in sequential order of time points and the ordering of the conditions should not change between time points, for example for $j$ conditions $n_{1}-n_{j}$ over $k$ time points $n_{1}(1)-n_{j}(k)$, the input vector should be in the form $$N=(n_{1}(1),n_{2}(1),...,n_{j}(1),...,n_{1}(k),n_{2}(k),...,n_{j}(k)).$$ The input files are the track rearrangements files for both the nucleic acid and amino acid sequences and the rearrangements file. For alternative data, matrices must be included in a specific format. Two matrices are required for input, one with the CDR3 sequence in amino acids and another with the CDR3 sequence in nucleic acids. Rows of the matrix must correspond to unique TCRBeta CDR3s and columns of the matrix should correspond to the TCR repertoire for each sample so that elements of the matrix are the productive frequency of each rearrangement for each sample.
 
