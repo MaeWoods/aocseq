@@ -29,7 +29,9 @@ Steps to run the software are illustrated below in the flow chart and functions 
 Flow chart showing aocseq usage  “Created in Lucidchart, www.lucidchart.com”.
 
 # Getting started: 
-Initial preprocessing of gene expression arrays with cell type annotation is provided in the function CombineData. aocseq can be used to analyze data in the form of VDJ enrichment, immunoprofiling, Multiplex data, Hash tagged data and Cell surface labelling. Examples are provided below with accompanying vignettes
+Initial preprocessing of gene expression arrays with cell type annotation is provided in the function CombineData. aocseq can be used to analyze data in the form of VDJ enrichment, immunoprofiling, Multiplex data, Hash tagged data and Cell surface labelling. 
+
+**Vignettes**
 
 To read in gene expression data and analyze clonotypes:
 [Getting started with aocseq](./html/GettingStartedWithaocseq.svg)
