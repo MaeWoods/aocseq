@@ -2,10 +2,7 @@
 <foreignObject width="100" height="100">
     <div xmlns="http://www.w3.org/1999/xhtml">
         <ul>
-            <li><link rel="import" href="GettingStartedWithaocseq.html"></li>
-        </ul>
-        <ul>
-        	<div w3-include-html="GettingStartedWithaocseq.html"></div>
+            <li><iframe src="GettingStartedWithaocseq.html"></iframe>
         </ul>
 </div>
 </foreignObject>
