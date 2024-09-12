@@ -1,0 +1,74 @@
+---
+title: "aocseq Vignette"
+author: "Noah Crooks"
+date: "2024-06-11"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+##Abstract##
+Aocseq is an R package designed to automate the processing and analysis of single-cell RNA-sequencing data. It is able to read in multiplexed 10X Genomics single-cell sequencing data from cellranger and, optionally, VDJ enrichment sequencing, perform demultiplexing using an implementation of the GMM Demux algorithm and apply the standard Seurat single-cell preprocessing workflow. It then contains various functions to annotate cells based on CDR3b sequence and gene expression, calculating the Mahalonobis distance between input expression data and a reference, and performing differential gene expression using the DEsingle algorithm.
+
+###Install Required Packages###
+Aocseq uses the Seurat object data structure, as well as several function from the Seurat package. Seurat should be installed automatically along with aocseq, but we load it explicitly here to highlight that Seurat is central to the functionality of aocseq.
+
+```{r}
+library(aocseq)
+library(Seurat)
+```
+###Importing Data###
+Importing single-cell expression data and VDJ enrichment data is handled by the CombineData function. For this vignette, we will use data from the paper "Chimeric Antigen Receptor-induced Antigen Loss Protects CD5.CART Cells From Fratricide Without Compromising On-target Cytotoxicity" which is available from (website). These data contain 13278 T cells from 3 different patients. Before running CombineData, we need to define our parameters.
+```{r}
+gex.path=c("CD5")
+vdj.path=c()
+marker.gene=c("IFNG","CRTAM","TNF")  
+threshold.cutoff=0.975
+save.dir="CD5_2.rds"
+index.control=1
+n.samples=1
+sample.name=c("CD5")
+demultiplex.index = c(8, 9, 10)
+nameshashtags = c('donor_1', 'donor_2','donor_3')
+hashtags = 3
+n.samples.ht = 1
+n.hashtag.samples = 1
+demultiplex=TRUE
+c.index=1
+sample.name=c("CD5")
+nFeature_RNA_lower=100
+nFeature_RNA_upper=10000
+percent.mt_upper=5
+verbose=TRUE
+preset=1
+```
+Then we can run CombineData, which will create a list of Seurat object, one for each sample/hashtag combination. CombineData automatically performs QC filtering based on the nFeature_RNA_lower, nFeature_RNA_upper, and percent.mt_upper parameters.
+```{r}
+CellData=CombineData(gex.path,
+  vdj.path=c(),
+  marker.gene,
+  threshold.cutoff,
+  save.dir,
+  index.control,
+  n.samples,
+  c.index,
+  sample.name,
+  preset,
+  threshold.entry,
+  demultiplex,
+  demultiplex.index,
+  nameshashtags,
+  n.hashtag.samples,
+  n.samples.ht,
+  tenX_conversion="true",
+  hashtags,
+  nFeature_RNA_lower=100,
+  nFeature_RNA_upper=10000,
+  nvariable_features=3000,
+  percent.mt_upper=5,
+  verbose=TRUE)
+```
+After running CombineData, you should be left with a list of Seurat objects. In this case, we have three Seurat objects, one for each hashtag. While it is possible to run certain
+
