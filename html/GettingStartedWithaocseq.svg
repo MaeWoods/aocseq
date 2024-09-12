@@ -1,7 +1,87 @@
-<svg width="100" height="100" xmlns="http://www.w3.org/2000/svg">
-<foreignObject width="100" height="100">
+<svg width="1000" height="1300" xmlns="http://www.w3.org/2000/svg">
+<foreignObject width="1000" height="1300">
     <div xmlns="http://www.w3.org/1999/xhtml">
-        <a href="GettingStartedWithaocseq.html">mylink</a>
+        <!-- Other embed HTML element/text into SVG -->
+        <body>
+
+
+
+
+<h1 class="title toc-ignore">Getting started with aocseq</h1>
+
+
+
+<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(aocseq)</span></code></pre></div>
+<div id="trace-sequencing" class="section level2">
+<h2>Trace sequencing</h2>
+<p>The package <code>&quot;aocseq&quot;</code> is a set of scripts that are
+designed to trace (among heterogenous cells) the expression of a set of
+genes that are functional bio-markers, in the sense that they are
+transiently co-expressed in a single cell and for a fixed duration of
+time.</p>
 </div>
+<div id="loading-the-library-and-reading-in-the-data-with-combinedata" class="section level2">
+<h2>Loading the library and reading in the data with
+<code>CombineData</code></h2>
+<p>Load the libraries for the package traceseq</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="fu">suppressMessages</span>(<span class="fu">library</span>(aocseq))</span></code></pre></div>
+<p>The first step is to import single cell and (in the case of T cell
+activation and stimulation) VDJ contig files. In this example, 10X
+genomics feature barcode matrices are imported along with the
+contig_annotations_file.csv. Let’s import a three hour stimulation
+assay. traceseq allows the selection of marker genes to compute their
+expression in a subset of cells</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>marker.gene<span class="ot">=</span><span class="fu">c</span>(<span class="st">&quot;IFNG&quot;</span>,<span class="st">&quot;TNF&quot;</span>)</span></code></pre></div>
+<p>there are two conditions in our batch and the first condition is our
+control. We can specify a save directory for the RDS file.</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>save.dir<span class="ot">=</span><span class="st">&quot;RDS/scAssay.rds&quot;</span></span></code></pre></div>
+<p>and we have to specify the gene expression and VDJ path</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>gex.path<span class="ot">=</span><span class="fu">list</span>(<span class="st">&quot;SeqData/gex/Control&quot;</span>,<span class="st">&quot;SeqData/gex/CMV&quot;</span>)</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>vdj.path<span class="ot">=</span><span class="fu">list</span>(<span class="st">&quot;SeqData/gex/Control/all_contig_annotations.csv&quot;</span>,<span class="st">&quot;SeqData/gex/CMV/all_contig_annotations)</span></span></code></pre></div>
+<p>After specifying the inputs we can run CombineData</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>scData <span class="ot">&lt;-</span> <span class="fu">CombineData</span>(gex.path,vdj.path, marker.gene)</span></code></pre></div>
+</div>
+<div id="labelling-subsets-annotateclonotypes" class="section level2">
+<h2>Labelling subsets <code>AnnotateClonotypes</code></h2>
+<p>AnnotateClonotypes summarizes and consolidates clonotypes (or cell
+types) across multiple samples. First we have to specify the Clonal
+Object</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>Clonal_Obs<span class="ot">=</span><span class="fu">readRDS</span>(<span class="st">&quot;RDS/scData.rds&quot;</span>)</span></code></pre></div>
+<p>We also need to specify and make a directory to store the summary
+data sheet</p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>mypath<span class="ot">=</span><span class="st">&quot;SummaryTables/scData&quot;</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>mynames.spreadsheet <span class="ot">=</span> <span class="fu">c</span>(<span class="st">&quot;Control&quot;</span>,<span class="st">&quot;CMV&quot;</span>)</span></code></pre></div>
+<p>After this, we can call the function</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="fu">AnnotateClonotypes</span>(Clonal_Obs,<span class="at">path=</span>mypath,<span class="at">names.spreadsheet=</span>mynames.spreadsheet)</span></code></pre></div>
+</div>
+<div id="classify-cells-based-on-their-expression-of-the-gene-signature-classifyclonotypes" class="section level2">
+<h2>Classify cells based on their expression of the gene signature
+<code>ClassifyClonotypes</code></h2>
+<p>Similarly to AnnotateClonotypes, you will need to specify a path to
+where you will save your data</p>
+<div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>myClonotypes<span class="ot">=</span><span class="fu">read_csv</span>(<span class="st">&quot;SummaryTables/scDataIFNG/SummaryTable.csv&quot;</span>)</span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>mypath<span class="ot">=</span><span class="st">&quot;SummaryTables/scData&quot;</span></span></code></pre></div>
+<p>then run the function</p>
+<div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="fu">ClassifyClonotypes</span>(Clonal_Obs,myClonotypes,<span class="at">path=</span>mypath)</span></code></pre></div>
+</div>
+
+
+
+<!-- code folding -->
+
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+    </div>
 </foreignObject>
 </svg>
+
