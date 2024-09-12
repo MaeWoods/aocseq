@@ -2,7 +2,7 @@
 
 **aocseq** is a suite of statistical tools that are publically available for the analysis of multimodal immunosequencing data. For example, the package can be used to trace recently stimulated T cells in the blood with their gene expression transcripts. 
 
-The purpose of this statistical tool is to quantify single cell data and provide **1)** A sample list of mixed cell types with accompanying data sheets to measure the number of different cell types that are present in the blood and **2)** To detect, score and rank cells with optimal or desirable characteristics. Characteristics are defined by the gene expression of cells that are considered desirable by their response to perturbation. 
+The purpose of this statistical tool is to quantify single cell data and provide **1)** A sample list of mixed cell types with accompanying data sheets to measure the number of different cell types that are present in the blood or tissue and **2)** To detect, score and rank cells with optimal or desirable characteristics. Characteristics are defined by the gene expression of cells that are considered desirable by their response to perturbation. 
 
 **Research applications**
 
