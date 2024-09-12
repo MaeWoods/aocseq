@@ -4,7 +4,9 @@
         <ul>
             <li>text</li>
         </ul>
-        <div w3-include-html="GettingStartedWithaocseq.html"></div>
+        <ul>
+        	<div w3-include-html="GettingStartedWithaocseq.html"></div>
+        </ul>
 </div>
 </foreignObject>
 </svg>
