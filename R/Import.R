@@ -75,11 +75,8 @@ m_step <- function(x, posterior.df) {
 #' @export
 GMM_demux<-function(s.name,data, hashtag_index, nameshashtags){
 
-  #Total_T_Cells=length(data$`Gene Expression`@p)
-  #pbmc.htos <- data$`Antibody Capture`
-  Total_T_Cells=5000
-  pbmc.htos=10
-
+  Total_T_Cells=length(data$`Gene Expression`@p)
+  pbmc.htos <- data$`Antibody Capture`
   temp=t(as.matrix(pbmc.htos))+1
   tempqp=temp
   mu.cont<-c()
@@ -268,6 +265,8 @@ CombineData <- function(
   preset=1,
   threshold.entry=0,
   demultiplex=FALSE,
+  demultiplex.index=c(),
+  nameshashtags=c(),
   n.hashtag.samples=1,
   n.samples.ht=1,
   tenX_conversion="true",
@@ -330,9 +329,9 @@ for(k in 1:n.samples){
 RnaStoreUMO=Clonal_Obs[[k]]@assays$RNA@counts
 
 #VDJ list with barcodes
-print(paste(paste("Reading in VDJ for sample ",k,sep=""),".",sep=""))
 if(length(vdj.path)>0){
-if(demultiplex){
+  print(paste(paste("Reading in VDJ for sample ",k,sep=""),".",sep=""))
+  if(demultiplex){
   if(k==1){
   vdj.path.temp=vdj.path
   vdj.path=0
@@ -342,7 +341,8 @@ if(demultiplex){
   vdj.path=vdj.path[-1]
   }
   VDJ_Obs[[k]] <- read.csv(vdj.path[[k]])
-}else{
+}
+  else{
 VDJ_Obs[[k]] <- read.csv(vdj.path[[k]])
 }
 
@@ -439,6 +439,7 @@ rm(RnaStoreUMO)
 ##         Annotate cells with clonotypes (TCRB)             ##
 ##-----------------------------------------------------------##
 ###############################################################
+if(length(vdj.path)>0){
 monoTRBNA=vector(mode = "list", length = n.samples)
 monoTRBAA=vector(mode = "list", length = n.samples)
 for(k in 1:n.samples){
@@ -564,6 +565,7 @@ for(j in 1:dim(Clonal_Obs[[k]])[2]){
 
 Clonal_Obs[[k]]=AddMetaData(Clonal_Obs[[k]], clono.nucleotide.seq[[k]], col.name = 'cdr3_na')
 Clonal_Obs[[k]]=AddMetaData(Clonal_Obs[[k]], clono.aminoacid.seq[[k]], col.name = 'cdr3')
+}
 }
 Dataset=Clonal_Obs
 saveRDS(Dataset,file.saved)
