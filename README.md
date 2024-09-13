@@ -37,10 +37,10 @@ Initial preprocessing of gene expression arrays with cell type annotation is pro
 
 **Vignettes**
 
-To read in gene expression data and analyze clonotypes:
+* To read in gene expression data and analyze clonotypes:
 [Getting started with aocseq](./html/GettingStartedWithaocseq.svg)
 
-To read in data containing citeseq hashtags, demultiplex, and analyze surface marker expression:
+* To read in data containing citeseq hashtags, demultiplex, and analyze surface marker expression:
 [Using aocseq for hashtagged data](./html/GettingStartedWithaocseq.svg)
 
 **Immunosequencing**
