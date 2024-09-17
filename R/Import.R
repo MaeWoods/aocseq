@@ -311,7 +311,6 @@ for(k in 1:n.samples.ht){
   
 Clonal_Obs[[(q-1)*n.samples.ht+k]] = subset(hashtagdata[[q]],orig.ident %in% nameshashtags[(q-1)*n.samples.ht+k])
 Clonal_Obs[[(q-1)*n.samples.ht+k]][["percent.mt"]] <- PercentageFeatureSet(Clonal_Obs[[(q-1)*n.samples.ht+k]], pattern = "^MT-")
-print(subset(Clonal_Obs[[(q-1)*n.samples.ht+k]], subset = nFeature_RNA > nFeature_RNA_lower & nFeature_RNA < nFeature_RNA_upper & percent.mt < percent.mt_upper))
 if(QC_plots){
   print(VlnPlot(Clonal_Obs[[(q-1)*n.samples.ht+k]], features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3))
 }
@@ -336,7 +335,7 @@ rm(clonal.data)
 }
 
 for(k in 1:n.samples){
-RnaStoreUMO=Clonal_Obs[[k]]@assays$RNA@counts
+RnaStoreUMO=Clonal_Obs[[k]][['RNA']]$counts
 
 #VDJ list with barcodes
 if(length(vdj.path)>0){
@@ -429,15 +428,19 @@ cutoff[[k]]=lapply(alist, function(alist) quantile(d1[alist,],threshold.cutoff)[
 }
 
 Thresholds=matrix("unassigned",nrow=dim(Clonal_Obs[[k]])[2],ncol=length(Gene_indUMO))
+
 for(s in 1:length(Gene_indUMO)){
-  vec1=Clonal_Obs[[k]][Gene_indUMO[s],][["SCT"]]@data
+  
+  vec1=Clonal_Obs[[k]][["SCT"]]@data[Gene_indUMO[s],]
 for(j in 1:dim(Clonal_Obs[[k]])[2]){
   if(vec1[j]>cutoff[[c.index[k]]][s]){
     Thresholds[j,s]="high"
   }
 }
+  
   Clonal_Obs[[k]]=AddMetaData(Clonal_Obs[[k]], Thresholds[,s], col.name = paste("Threshold_",marker.gene[s],sep=""))
-}
+
+  }
 
 rm(mvsts.UMO)
 rm(RnaStoreUMO)

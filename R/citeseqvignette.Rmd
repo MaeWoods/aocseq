@@ -24,6 +24,7 @@ Aocseq uses the Seurat object data structure, as well as several function from t
 ```{r}
 library(aocseq)
 library(ggplot2)
+library(Seurat)
 ```
 
 
@@ -45,9 +46,9 @@ cp Figures-Rscripts/Data/CD5/*.* Data
 We also need to define our parameters.
 
 ```{r}
-gex.path=c("C:/Projects/CART_Citeseq/HighReads/CD19")
+gex.path=c("C:/Projects/SCsoftware/CD5")
 marker.gene=c("IFNG","CRTAM","TNF")  
-save.dir="RDS/CD5.rds"
+save.dir="CD5.rds"
 my.sample.name=c("CD5")
 my.demultiplex.index = c(8, 9, 10)
 my.nameshashtags = c('donor_1', 'donor_2','donor_3')
@@ -67,8 +68,7 @@ CellData=CombineData(gex.path,
                      hashtags=my.hashtags,
                      n.samples.ht = my.n.samples.ht,
                      nvariable_features=1000,
-                     QC_plots = TRUE,
-                     n.samples = 1)
+                     QC_plots = TRUE)
 ```
 After running CombineData, you should be left with a list of Seurat objects. In this case, we have three Seurat objects, one for each hashtag. While it is possible to run certain
 
