@@ -23,6 +23,7 @@ Aocseq uses the Seurat object data structure, as well as several function from t
 
 ```{r}
 library(aocseq)
+library(ggplot2)
 ```
 
 
@@ -31,7 +32,7 @@ suppressMessages(library(aocseq))
 ```
 
 ## Importing Data
-Data import is handled by the CombineData function. For this vignette, we will use data from the paper "Chimeric Antigen Receptor-induced Antigen Loss Protects CD5.CART Cells From Fratricide Without Compromising On-target Cytotoxicity" which is available from (website). These data contain 13278 T cells that have been co-cultured with CD5.CART cells from 3 healthy donors. The data can be downloaded from zenodo. Before running CombineData, dowload the example data and uncompress it. 
+Data import is handled by the CombineData function. For this vignette, we will use data from the paper "Chimeric Antigen Receptor-induced Antigen Loss Protects CD5.CART Cells From Fratricide Without Compromising On-target Cytotoxicity". These data contain 13278 T cells that have been co-cultured with CD5.CART cells from 3 healthy donors. The data can be downloaded from zenodo. Before running CombineData, dowload the example data and uncompress it. 
 
 ```{bash, eval = F}
 curl -O "https://zenodo.org/records/11286440/files/Figures-Rscripts.zip?download=1"
@@ -44,7 +45,7 @@ cp Figures-Rscripts/Data/CD5/*.* Data
 We also need to define our parameters.
 
 ```{r}
-gex.path=c("SeqData/CD5")
+gex.path=c("C:/Projects/CART_Citeseq/HighReads/CD19")
 marker.gene=c("IFNG","CRTAM","TNF")  
 save.dir="RDS/CD5.rds"
 my.sample.name=c("CD5")
@@ -54,7 +55,7 @@ my.n.samples.ht = 3
 my.hashtags = 3
 my.sample.name=c("CD5")
 ```
-Then we can run CombineData, which will create a list of Seurat object, one for each sample/hashtag combination. CombineData automatically performs QC filtering based on the nFeature_RNA_lower, nFeature_RNA_upper, and percent.mt_upper parameters. To speed up the example, we have set nvariable_features=1000 but this can take any value and the default is 3000.
+Then we can run CombineData, which will create a list of Seurat object, one for each sample/hashtag combination. CombineData automatically performs QC filtering based on the nFeature_RNA_lower, nFeature_RNA_upper, and percent.mt_upper parameters. These parameters represent the lower and upper cutoffs for RNA feature counts, and the upper bound for mitochondrial RNA percentage, respectively. To speed up the example, we have set nvariable_features=1000 but this can take any value and the default is 3000.
 ```{r, eval = F}
 CellData=CombineData(gex.path,
                      marker.gene,
@@ -65,7 +66,9 @@ CellData=CombineData(gex.path,
                      nameshashtags=my.nameshashtags,
                      hashtags=my.hashtags,
                      n.samples.ht = my.n.samples.ht,
-                     nvariable_features=1000)
+                     nvariable_features=1000,
+                     QC_plots = TRUE,
+                     n.samples = 1)
 ```
 After running CombineData, you should be left with a list of Seurat objects. In this case, we have three Seurat objects, one for each hashtag. While it is possible to run certain
 

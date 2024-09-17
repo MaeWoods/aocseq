@@ -275,7 +275,8 @@ CombineData <- function(
   nFeature_RNA_upper=10000,
   nvariable_features=3000,
   percent.mt_upper=5,
-  verbose=TRUE
+  verbose=TRUE,
+  QC_plots=FALSE
 ){
 
 
@@ -307,8 +308,13 @@ Clonal_Obs= vector(mode = "list", length = n.samples.ht*n.hashtag.samples)
 for(q in 1:n.hashtag.samples){
 for(k in 1:n.samples.ht){
   Idents(hashtagdata[[q]]) <- "orig.ident"
+  
 Clonal_Obs[[(q-1)*n.samples.ht+k]] = subset(hashtagdata[[q]],orig.ident %in% nameshashtags[(q-1)*n.samples.ht+k])
 Clonal_Obs[[(q-1)*n.samples.ht+k]][["percent.mt"]] <- PercentageFeatureSet(Clonal_Obs[[(q-1)*n.samples.ht+k]], pattern = "^MT-")
+print(subset(Clonal_Obs[[(q-1)*n.samples.ht+k]], subset = nFeature_RNA > nFeature_RNA_lower & nFeature_RNA < nFeature_RNA_upper & percent.mt < percent.mt_upper))
+if(QC_plots){
+  print(VlnPlot(Clonal_Obs[[(q-1)*n.samples.ht+k]], features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3))
+}
 Clonal_Obs[[(q-1)*n.samples.ht+k]]<- subset(Clonal_Obs[[(q-1)*n.samples.ht+k]], subset = nFeature_RNA > nFeature_RNA_lower & nFeature_RNA < nFeature_RNA_upper & percent.mt < percent.mt_upper)
 }
 }
@@ -317,8 +323,12 @@ rm(clonal.data)
   for(k in 1:n.samples){
     print(paste(paste("Reading in gene expression for sample ",k,sep=""),".",sep=""))
     clonal.data <- Read10X(data.dir = gex.path[[k]])
+    clonal.data
   Clonal_Obs[[k]] <- CreateSeuratObject(counts = clonal.data,project = sample.name[k])
   Clonal_Obs[[k]][["percent.mt"]] <- PercentageFeatureSet(Clonal_Obs[[k]], pattern = "^MT-")
+  if(QC_plots){
+    VlnPlot(Clonal_Obs[[(q-1)*n.samples.ht+k]], features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3)
+  }
   Clonal_Obs[[k]]<- subset(Clonal_Obs[[k]], subset = nFeature_RNA > nFeature_RNA_lower & nFeature_RNA < nFeature_RNA_upper & percent.mt < percent.mt_upper)
 
 }
