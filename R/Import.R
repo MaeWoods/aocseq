@@ -295,7 +295,7 @@ Clonal_Obs= vector(mode = "list", length = n.samples)
 VDJ_Obs= vector(mode = "list", length = n.samples)
 tcrhash= vector(mode = "list", length = n.samples)
 cutoff= vector(mode = "list", length = n.samples)
-
+hashtagdata= vector(mode = "list", length = n.hashtag.samples)
 if(demultiplex){
   hashtagdata= vector(mode = "list", length = n.hashtag.samples)
   for(q in 1:n.hashtag.samples){
@@ -400,13 +400,23 @@ rm(CD4cells)
 print(paste(paste("Starting scTRansform for sample ",k,sep=""),"...",sep=""))
 Clonal_Obs[[k]] <- SCTransform(Clonal_Obs[[k]], vars.to.regress = "percent.mt", verbose = FALSE,variable.features.n = nvariable_features)
 Gene_indUMO=match(marker.gene,row.names(Clonal_Obs[[k]][["SCT"]]@data))
+blist <- 1:length(Gene_indUMO)
+mask=which(is.na(Gene_indUMO)==TRUE)
+alist=setdiff(blist,mask)
+Gene_indUMO=Gene_indUMO[alist]
+if(length(mask)>0){
+  for(s in 1:length(mask)){
+    print(paste(paste("gene: ",marker.gene[mask[s]],sep=" ")," is not present in SCT",sep=""))
+          print("Continuing with remaining gois...")
+          }
+}
 d1=as.matrix(Clonal_Obs[[k]][["SCT"]]@data)[Gene_indUMO,]
 alist <- 1:length(Gene_indUMO)
 if((k %in% index.control)&&(preset==1)){
-  if(length(Gene_indUMO)==1){
+  if(length(alist)==1){
     cutoff[[k]]=lapply(alist, function(alist) quantile(unname(d1),threshold.cutoff)[[1]])
   }
-  else{
+  else if(length(alist)>1){
 cutoff[[k]]=lapply(alist, function(alist) quantile(d1[alist,],threshold.cutoff)[[1]])
 }
 }else if(preset==0){
