@@ -92,3 +92,110 @@ segmentPlot <- function(
   dev.off()
 
 }
+
+
+
+
+#' Export differential gene expression from several different samples and phenotypes
+#'
+#' This function will take a set of annotation spreadsheets and export differential
+#' expression between different cell types labelled by their marker genes
+#' Currently the phenotypic separation is CD4 and CD8, but the reader is encouraged
+#' to generate as many subsets as needed for downstream analysis
+#'
+#' @param Clonal_Obs A Seurat object pre-processed with aocseq::CombineData.
+#' @param clonotype.path Character array. Directory of an aocseq clonotype annotation table.
+#' @param save.dir Directory for storing differentially expressed genes.
+#' @param goi Character array. Gene name, a marker of interest.
+#' @param verbose Print progress
+#'
+#' @return return an assay containing predicted expression value in the data
+#' slot
+#' @concept integration
+#' @export
+UMAPReduction <- function(
+    Clonal_Obs,
+    clonotypes=c(),
+    save.dir,
+    ident.list=c("orig.ident"),
+    rseed=356,
+    ur.nfeatures=3000,
+    preload=FALSE,
+    preloadpath="."){
+  
+  
+  set.seed(rseed)
+  # split the dataset into a list of 3 seurat objects
+  immune.list= vector(mode = "list", length = length(Clonal_Obs))
+  for(k in 1:length(Clonal_Obs)){
+    immune.list[[k]]=Clonal_Obs[[k]]
+  }
+  rm(Clonal_Obs)
+  # normalize and identify variable features for each dataset independently
+  immune.list <- lapply(X = immune.list, FUN = function(x) {
+    x <- Seurat::NormalizeData(x, do.scale=FALSE, nfeatures = ur.nfeatures)
+    x <- Seurat::FindVariableFeatures(x, selection.method = "vst", nfeatures = ur.nfeatures)
+  })
+  
+  if(length(Clonal_Obs)>1){
+    features <- Seurat::SelectIntegrationFeatures(do.scale=FALSE, object.list = immune.list,nfeatures = ur.nfeatures,features.to.integrate=ur.nfeatures)
+    if(preload){
+      immune.anchors <- readRDS(preloadpath)
+      rm(immune.list)
+    }
+    else{
+    immune.anchors <- Seurat::FindIntegrationAnchors(object.list = immune.list, anchor.features = features)
+    
+    rm(immune.list)
+    saveRDS(immune.anchors,paste(save.dir,"/immune.anchors.rds",sep=""))
+    }
+    immune.integrated <- Seurat::IntegrateData(anchorset = immune.anchors,features.to.integrate=features)
+    rm(immune.anchors)
+    saveRDS(immune.integrated,paste(save.dir,"/immuneCombined.rds",sep=""))
+    immune.integrated <- ScaleData(immune.integrated, verbose = FALSE)
+    immune.integrated <- RunPCA(immune.integrated, npcs = 30, verbose = FALSE)
+    immune.integrated <- RunUMAP(immune.integrated, reduction = "pca", dims = 1:30)
+    #run this 2 together
+    immune.integrated <- FindNeighbors(immune.integrated, reduction = "pca", dims = 1:30)
+    immune.integrated <- FindClusters(immune.integrated, resolution = 0.5)
+    
+    for(k in 1:length(ident.list)){
+      p=DimPlot(immune.integrated, reduction = "umap",split.by = ident.list[k])
+      
+      #immune.integrated=Idents(immune.integrated,indent.list[k])
+      #DimPlot(immune.integrated, reduction = "umap",split.by = ident.list[k])
+    pdf(paste(paste("UMAP",k,sep=""),".pdf",sep=""),width=10,height=5)
+    print(DimPlot(immune.integrated, reduction = "umap",split.by = ident.list[k]))
+    dev.off()
+    }
+    
+    if(length(clonotypes)>0){
+      for(j in 1:length(clonotypes)){
+      pdf(paste(paste("UMAP_clonotype",j,sep=""),".pdf",sep=""),width=10,height=5)
+      print(DimPlot(subset(immune.integrated,cdr3_na %in% clonotypes[k]), reduction = "umap",split.by = indent.list[k]))
+      dev.off()
+      }
+    }
+    
+  }
+  else{
+    
+    immune.integrated <- ScaleData(immune.list[1], verbose = FALSE)
+    immune.integrated <- RunPCA(immune.integrated, npcs = 30, verbose = FALSE)
+    immune.integrated <- RunUMAP(immune.integrated, reduction = "pca", dims = 1:30)
+    #run this 2 together
+    immune.integrated <- FindNeighbors(immune.integrated, reduction = "pca", dims = 1:30)
+    immune.integrated <- FindClusters(immune.integrated, resolution = 0.5)
+    
+    for(k in 1:length(indent.list)){
+      #immune.integrated=Idents(immune.integrated,indent.list[k])
+      print(DimPlot(immune.integrated, reduction = "umap",split.by = indent.list[k]))
+      pdf(paste(paste("UMAP",k,sep=""),".pdf",sep=""),width=10,height=5)
+      print(DimPlot(immune.integrated, reduction = "umap",split.by = indent.list[k]))
+      dev.off()
+    }
+    
+  }
+  
+
+}
