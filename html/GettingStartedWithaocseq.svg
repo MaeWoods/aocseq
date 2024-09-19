@@ -1,5 +1,5 @@
-<svg width="1000" height="1050" xmlns="http://www.w3.org/2000/svg">
-<foreignObject width="1000" height="1050">
+<svg width=100% height=100% xmlns="http://www.w3.org/2000/svg">
+<foreignObject width=100% height=100%>
     <div xmlns="http://www.w3.org/1999/xhtml">
         <!-- Other embed HTML element/text into SVG -->
         <head>
@@ -7,7 +7,7 @@
   code{white-space: pre-wrap;}
   span.smallcaps{font-variant: small-caps;}
   span.underline{text-decoration: underline;}
-  div.column{display: inline-block; vertical-align: top; width: 50%;}
+  div.column{display: inline-block; vertical-align: top; width: 100%;}
   div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
   ul.task-list{list-style: none;}
     </style>
