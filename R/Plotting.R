@@ -204,3 +204,87 @@ UMAPReduce <- function(
   
 
 }
+
+
+
+#' QC plot
+#'
+#' This function will take a set of annotation spreadsheets and export differential
+#' expression between different cell types labelled by their marker genes
+#' Currently the phenotypic separation is CD4 and CD8, but the reader is encouraged
+#' to generate as many subsets as needed for downstream analysis
+#'
+#' @param Clonal_Obs A Seurat object pre-processed with aocseq::CombineData.
+#' @param clonotype.path Character array. Directory of an aocseq clonotype annotation table.
+#' @param save.dir Directory for storing differentially expressed genes.
+#' @param goi Character array. Gene name, a marker of interest.
+#' @param verbose Print progress
+#'
+#' @return return an assay containing predicted expression value in the data
+#' slot
+#' @concept integration
+#' @export
+QCPlot <- function(
+    Clonal_Obs,
+    nFeature_RNA_lower=100,
+    nFeature_RNA_upper=10000,
+    percent.mt_upper=5,
+){
+  
+  ##Create a data frame
+  combinedCounts=data.frame(nCount_RNA=Clonal_Obs@meta.data$nCount_RNA,
+                            nFeature_RNA=Clonal_Obs@meta.data$nFeature_RNA,
+                            percent.mt=Clonal_Obs@meta.data$percent.mt,
+                            name=Clonal_Obs@meta.data$orig.ident
+                            ColSplitRNA=ifelse(((Clonal_Obs@meta.data$nCount_RNA>nFeature_RNA_upper)|
+                                                  (Clonal_Obs@meta.data$nCount_RNA<nFeature_RNA_lower)),1,2),
+                            ColSplitMito=ifelse(((Clonal_Obs@meta.data$percent.mt>percent.mt_upper)),1,2))
+  
+  ##Plot the data frame
+  par(mfrow = c(3, 1))
+  ggplot() + 
+    geom_violin(data=combinedCounts,aes(x=factor(name), y=nFeature_RNA ,fill=factor(ColSplitRNA)), alpha = 0.6 )+
+    geom_point(data=combinedCounts,aes(x=factor(name), y=nFeature_RNA ,fill=factor(ColSplitRNA)),position = position_dodge(width = .9), alpha = 1 )+
+    geom_hline(yintercept=nFeature_RNA_upper)+
+    geom_hline(yintercept=nFeature_RNA_lower)+
+    ylab("Count") +
+    xlab("Sample") +
+    scale_fill_manual("Discarded data",values=c("red4","blue"))
+  ggtitle(factor(name)) +
+    theme(axis.line = element_line(colour = "black"),
+          panel.grid.major = element_blank(),
+          panel.grid.minor = element_blank(),
+          panel.border = element_blank(),
+          panel.background = element_blank())
+  
+  ggplot() + 
+    geom_violin(data=combinedCounts,aes(x=factor(name), y=nCount_RNA ,fill=factor(ColSplitRNA)), alpha = 0.6 )+
+    geom_point(data=combinedCounts,aes(x=factor(name), y=nCount_RNA ,fill=factor(ColSplitRNA)),position = position_dodge(width = .9), alpha = 1 )+
+    geom_hline(yintercept=nFeature_RNA_upper)+
+    geom_hline(yintercept=nFeature_RNA_lower)+
+    ylab("Count") +
+    xlab("Sample") +
+    scale_fill_manual("Discarded data",values=c("red4","blue"))
+  ggtitle(factor(name)) +
+    theme(axis.line = element_line(colour = "black"),
+          panel.grid.major = element_blank(),
+          panel.grid.minor = element_blank(),
+          panel.border = element_blank(),
+          panel.background = element_blank())
+  
+  ggplot() + 
+    geom_violin(data=combinedCounts,aes(x=factor(name), y=percent.mt ,fill=ColSplitMito), alpha = 0.6 )+
+    geom_point(data=combinedCounts,aes(x=factor(name), y=percent.mt ,fill=ColSplitMito),position = position_dodge(width = .9), alpha = 1 )+
+    geom_hline(yintercept=nFeature_RNA_upper)+
+    geom_hline(yintercept=nFeature_RNA_lower)+
+    ylab("Count") +
+    xlab("Sample") +
+    scale_fill_manual("Discarded data",values=c("red4","blue"))
+  ggtitle(factor(name)) +
+    theme(axis.line = element_line(colour = "black"),
+          panel.grid.major = element_blank(),
+          panel.grid.minor = element_blank(),
+          panel.border = element_blank(),
+          panel.background = element_blank())
+  
+}
