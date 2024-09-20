@@ -113,31 +113,34 @@ segmentPlot <- function(
 #' slot
 #' @concept integration
 #' @export
-UMAPReduction <- function(
+UMAPReduce <- function(
     Clonal_Obs,
+    save.dir=".",
     clonotypes=c(),
-    save.dir,
     ident.list=c("orig.ident"),
     rseed=356,
-    ur.nfeatures=3000,
+    ur.nfeatures=500,
     preload=FALSE,
     preloadpath="."){
   
   
   set.seed(rseed)
   # split the dataset into a list of 3 seurat objects
-  immune.list= vector(mode = "list", length = length(Clonal_Obs))
-  for(k in 1:length(Clonal_Obs)){
-    immune.list[[k]]=Clonal_Obs[[k]]
-  }
-  rm(Clonal_Obs)
+  
   # normalize and identify variable features for each dataset independently
-  immune.list <- lapply(X = immune.list, FUN = function(x) {
-    x <- Seurat::NormalizeData(x, do.scale=FALSE, nfeatures = ur.nfeatures)
-    x <- Seurat::FindVariableFeatures(x, selection.method = "vst", nfeatures = ur.nfeatures)
-  })
+  
   
   if(length(Clonal_Obs)>1){
+    
+    immune.list= vector(mode = "list", length = length(Clonal_Obs))
+    for(k in 1:length(Clonal_Obs)){
+      immune.list[[k]]=Clonal_Obs[[k]]
+    }
+    rm(Clonal_Obs)
+    immune.list <- lapply(X = immune.list, FUN = function(x) {
+      x <- Seurat::NormalizeData(x, do.scale=FALSE, nfeatures = ur.nfeatures)
+      x <- Seurat::FindVariableFeatures(x, selection.method = "vst", nfeatures = ur.nfeatures)
+    })
     features <- Seurat::SelectIntegrationFeatures(do.scale=FALSE, object.list = immune.list,nfeatures = ur.nfeatures,features.to.integrate=ur.nfeatures)
     if(preload){
       immune.anchors <- readRDS(preloadpath)
@@ -179,19 +182,21 @@ UMAPReduction <- function(
     
   }
   else{
+    x <- Seurat::NormalizeData(Clonal_Obs, do.scale=FALSE, nfeatures = ur.nfeatures)
+    x <- Seurat::FindVariableFeatures(Clonal_Obs, selection.method = "vst", nfeatures = ur.nfeatures)
     
-    immune.integrated <- ScaleData(immune.list[1], verbose = FALSE)
+    immune.integrated <- ScaleData(x, verbose = FALSE)
     immune.integrated <- RunPCA(immune.integrated, npcs = 30, verbose = FALSE)
     immune.integrated <- RunUMAP(immune.integrated, reduction = "pca", dims = 1:30)
     #run this 2 together
     immune.integrated <- FindNeighbors(immune.integrated, reduction = "pca", dims = 1:30)
     immune.integrated <- FindClusters(immune.integrated, resolution = 0.5)
     
-    for(k in 1:length(indent.list)){
+    for(k in 1:length(ident.list)){
       #immune.integrated=Idents(immune.integrated,indent.list[k])
-      print(DimPlot(immune.integrated, reduction = "umap",split.by = indent.list[k]))
+      print(DimPlot(immune.integrated, reduction = "umap",split.by = ident.list[k]))
       pdf(paste(paste("UMAP",k,sep=""),".pdf",sep=""),width=10,height=5)
-      print(DimPlot(immune.integrated, reduction = "umap",split.by = indent.list[k]))
+      print(DimPlot(immune.integrated, reduction = "umap",split.by = ident.list[k]))
       dev.off()
     }
     
