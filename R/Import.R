@@ -238,16 +238,26 @@ GMM_demux<-function(s.name,data, hashtag_index, nameshashtags){
 #' Other parameters are listed for debugging, but can be left as default values.
 #'
 #' @param gex.path path to gene expression data in the format of cellranger feature barcode matrices
-#' @param vdj.path path to VDJ expression data in the format of cellranger csv files
 #' @param marker.gene list of marker genes used for specificity analysis
+#' @param vdj.path path to VDJ expression data in the format of cellranger csv files
 #' @param threshold.cutoff list of marker genes used for specificity analysis
 #' @param file.saved directory for storing Seurat object RDS files
 #' @param index.control index of the control sequencing sample
+#' @param c.index index of the control sequencing sample
+#' @param sample.name index of the control sequencing sample
 #' @param preset If set to 1, preset determines the threshold for cutoff if a control is included in the assay
 #' @param threshold.entry Double. Sets the percentile above which gene expression is labelled as high.
 #' @param demultiplex Boolean value used to indicate if the data was hashtagged
-#' @param hashtags Integer represents the number of hashtags used (if any)
+#' @param demultiplex.index Boolean value used to indicate if the data was hashtagged
+#' @param names.hashtag Boolean value used to indicate if the data was hashtagged
+#' @param n.ht.per.sample Boolean value used to indicate if the data was hashtagged
+#' @param tenX_conversion Boolean value used to indicate if the data was hashtagged
+#' @param nFeature_RNA_lower Boolean value used to indicate if the data was hashtagged
+#' @param nFeature_RNA_upper Boolean value used to indicate if the data was hashtagged
+#' @param nvariable_features Boolean value used to indicate if the data was hashtagged
+#' @param percent.mt_upper Boolean value used to indicate if the data was hashtagged
 #' @param verbose Print progress bars and output
+#' @param QC_plots Print progress bars and output
 #'
 #' @return A Seurat object list containing metadata and VDJ annotations.
 #' @concept annotation
@@ -259,7 +269,6 @@ CombineData <- function(
   threshold.cutoff=.975,
   file.saved="samples.rds",
   index.control=1,
-  n.samples=c(-1),
   c.index=c(-1),
   sample.name=c(-1),
   preset=1,
@@ -267,8 +276,7 @@ CombineData <- function(
   demultiplex=FALSE,
   demultiplex.index=c(),
   nameshashtags=c(),
-  n.hashtag.samples=1,
-  n.samples.ht=1,
+  n.ht.per.sample=1,
   tenX_conversion="true",
   nFeature_RNA_lower=100,
   nFeature_RNA_upper=10000,
@@ -278,32 +286,31 @@ CombineData <- function(
   QC_plots=FALSE
 ){
 
-
   #Set undefined parameters
   if(c.index[1]==-1){
-    c.index=rep(1,n.samples.ht)
+    c.index=rep(1,n.ht.per.sample)
   }
   if(sample.name[1]==-1){
     for(j in 1:length(gex.path)){
       lengthpath=nchar(gex.path[j])
       this.name=''
-    for(k in 1:nchar(gex.path[j]))
+      for(k in 1:nchar(gex.path[j]))
       {    
-      while(temp!="/"){
-      temp=substr(gex.path[j],(lengthpath-(k-1)),(lengthpath-(k-1)))
-      sample.name=as.character(1:length(gex.path))
-      if(k==1){
-        this.name=temp
+        while(temp!="/"){
+          temp=substr(gex.path[j],(lengthpath-(k-1)),(lengthpath-(k-1)))
+          sample.name=as.character(1:length(gex.path))
+          if(k==1){
+            this.name=temp
+          }
+          else{
+            this.name=paste(this.name,temp,sep="")
+          }
+        }
       }
-      else{
-        this.name=paste(this.name,temp,sep="")
-      }
-      }
-    }
       newtemp=''
       for(k in 1:nchar(temp)){
         if(k==1){
-        newtemp=substr(temp,(nchar(temp)-(k-1)),(nchar(temp)-(k-1)))
+          newtemp=substr(temp,(nchar(temp)-(k-1)),(nchar(temp)-(k-1)))
         }else{
           newtemp=paste(newtemp,substr(temp,(nchar(temp)-(k-1)),(nchar(temp)-(k-1))),sep="")
         }
@@ -311,36 +318,328 @@ CombineData <- function(
       sample.name[j]=newtemp
     }
   }
-  if(n.samples[1]==-1){
+  
     n.samples=length(gex.path)
+  
+  
+  Clonal_Obs= vector(mode = "list", length = n.samples)
+  VDJ_Obs= vector(mode = "list", length = n.samples)
+  tcrhash= vector(mode = "list", length = n.samples)
+  cutoff= vector(mode = "list", length = n.samples)
+  
+  if(packageVersion("Seurat")<'5.0.0'){
+    
+    if(demultiplex){
+      n.hashtag.samples=length(gex.path)
+      n.samples=n.ht.per.sample*n.hashtag.samples
+      hashtagdata= vector(mode = "list", length = n.hashtag.samples)
+      for(q in 1:n.hashtag.samples){
+        clonal.data <- Read10X(data.dir = gex.path[[q]])
+        hashtagdata[[q]] <- GMM_demux(sample.name[((q-1)*n.ht.per.sample)+1],clonal.data, demultiplex.index[(((q-1)*n.ht.per.sample)+1):((q)*n.ht.per.sample)],nameshashtags[(((q-1)*n.ht.per.sample)+1):((q)*n.ht.per.sample)])
+        
+      }
+      
+      Clonal_Obs= vector(mode = "list", length = n.ht.per.sample*n.hashtag.samples)
+      for(q in 1:n.hashtag.samples){
+        for(k in 1:n.ht.per.sample){
+          Idents(hashtagdata[[q]]) <- "orig.ident"
+          Clonal_Obs[[(q-1)*n.ht.per.sample+k]] = subset(hashtagdata[[q]],orig.ident %in% nameshashtags[(q-1)*n.ht.per.sample+k])
+          Clonal_Obs[[(q-1)*n.ht.per.sample+k]][["percent.mt"]] <- PercentageFeatureSet(Clonal_Obs[[(q-1)*n.ht.per.sample+k]], pattern = "^MT-")
+          if(QC_plots){
+            print(VlnPlot(Clonal_Obs[[(q-1)*n.ht.per.sample+k]], features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3))
+          }
+          Clonal_Obs[[(q-1)*n.ht.per.sample+k]]<- subset(Clonal_Obs[[(q-1)*n.ht.per.sample+k]], subset = nFeature_RNA > nFeature_RNA_lower & nFeature_RNA < nFeature_RNA_upper & percent.mt < percent.mt_upper)
+        }
+      }
+      rm(clonal.data)
+    }else{
+      for(k in 1:n.samples){
+        print(paste(paste("Reading in gene expression for sample ",k,sep=""),".",sep=""))
+        clonal.data <- Read10X(data.dir = gex.path[[k]])
+        Clonal_Obs[[k]] <- CreateSeuratObject(counts = clonal.data,project = sample.name[k])
+        Clonal_Obs[[k]][["percent.mt"]] <- PercentageFeatureSet(Clonal_Obs[[k]], pattern = "^MT-")
+        if(QC_plots){
+          VlnPlot(Clonal_Obs[[(q-1)*n.ht.per.sample+k]], features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), stack = TRUE)
+        }
+        Clonal_Obs[[k]]<- subset(Clonal_Obs[[k]], subset = nFeature_RNA > nFeature_RNA_lower & nFeature_RNA < nFeature_RNA_upper & percent.mt < percent.mt_upper)
+        
+      }
+      rm(clonal.data)
+    }
+    
+    for(k in 1:n.samples){
+      RnaStoreUMO=Clonal_Obs[[k]]@assays$RNA@counts
+      
+      #VDJ list with barcodes
+      if(length(vdj.path)>0){
+        n.hashtag.samples=length(gex.path)
+        print(paste(paste("Reading in VDJ for sample ",k,sep=""),".",sep=""))
+        if(demultiplex){
+          if(k==1){
+            vdj.path.temp=vdj.path
+            vdj.path=0
+            for(q in 1:n.hashtag.samples){
+              vdj.path=append(vdj.path,rep(vdj.path.temp[q],n.ht.per.sample))
+            }
+            vdj.path=vdj.path[-1]
+          }
+          VDJ_Obs[[k]] <- read.csv(vdj.path[[k]])
+        }
+        else{
+          VDJ_Obs[[k]] <- read.csv(vdj.path[[k]])
+        }
+        
+        tcrUMO_cell=subset(VDJ_Obs[[k]],productive==tenX_conversion & is_cell==tenX_conversion)
+        TCRlistUMO=tcrUMO_cell$barcode
+        joint.bcsUMO <- intersect(colnames(RnaStoreUMO), TCRlistUMO)
+        #Remove barcodes from list that don't match VDJ
+        tcrhash[[k]]=subset(VDJ_Obs[[k]],VDJ_Obs[[k]]$barcode %in% joint.bcsUMO)
+        mvsts.UMO <- RnaStoreUMO[, joint.bcsUMO]
+        Clonal_Obs[[k]]=Clonal_Obs[[k]][,joint.bcsUMO]
+      }
+      else{
+        mvsts.UMO<-RnaStoreUMO
+      }
+      ####Genes of interest
+      Gene_indUMO=match(marker.gene,row.names(mvsts.UMO))
+      CD8_UMO=match("CD8A",row.names(mvsts.UMO))
+      CD4_UMO=match("CD4",row.names(mvsts.UMO))
+      CD8cells=rep(0,length(mvsts.UMO[Gene_indUMO[1],]))
+      CD4cells=rep(0,length(mvsts.UMO[Gene_indUMO[1],]))
+      
+      vec1=mvsts.UMO[CD4_UMO,]
+      vec2=mvsts.UMO[CD8_UMO,]
+      
+      for(g in 1:length(CD8cells)){
+        if((vec2[g]==0)&(vec1[g]>0)){
+          CD4cells[g]=1
+        }
+        else if((vec2[g]>0)&(vec1[g]==0)){
+          CD8cells[g]=1
+        }
+        else{}
+      }
+      rm(vec1)
+      rm(vec2)
+      
+      Clonal_Obs[[k]]=AddMetaData(Clonal_Obs[[k]], CD8cells, col.name = 'CD8cells')
+      Clonal_Obs[[k]]=AddMetaData(Clonal_Obs[[k]], CD4cells, col.name = 'CD4cells')
+      Clonal_Obs[[k]]=AddMetaData(Clonal_Obs[[k]], rep(sample.name[k],length(CD4cells)), col.name = 'sampleref')
+      
+      rm(CD8cells)
+      rm(CD4cells)
+      #Check for errors - should you wish to plot
+      #plot(log10(mvsts.UMO[Gene_indUMO[1],]),log10(mvsts.UMO[Gene_indUMO[2],]),xlab=paste(Gene_indUMO[3]," (log10 UMIs)",sep=""),ylab=paste(Gene_indUMO[2]," (log10 UMIs)",sep=""),col=rgb(red=0, green = 0, blue = 0, alpha=0.5),pch=16,cex=1,xlim=c(0,4.5),ylim=c(0,4.5))
+      #plot(log10(mvsts.UMO[CD8_UMO,]),log10(mvsts.UMO[CD4_UMO,]),xlab="CD8",ylab="CD4",col=rgb(red=0, green = 0, blue = 0, alpha=0.5),pch=16,cex=1,xlim=c(0,4.5),ylim=c(0,4.5))
+      print(paste(paste("Starting scTRansform for sample ",k,sep=""),"...",sep=""))
+      Clonal_Obs[[k]] <- SCTransform(Clonal_Obs[[k]], vars.to.regress = "percent.mt", verbose = FALSE,variable.features.n = nvariable_features)
+      Gene_indUMO=match(marker.gene,row.names(Clonal_Obs[[k]][["SCT"]]@data))
+      d1=as.matrix(Clonal_Obs[[k]][["SCT"]]@data)[Gene_indUMO,]
+      alist <- 1:length(Gene_indUMO)
+      if((k %in% index.control)&&(preset==1)){
+        print(paste(paste("Sample: ",k,sep=""),"used for threshold"))
+        if(length(Gene_indUMO)==1){
+          cutoff[[k]]=lapply(alist, function(alist) quantile(unname(d1),threshold.cutoff)[[1]])
+          for(a in 1:length(Gene_indUMO)){
+            print(paste(paste(paste("Cutoff for ",marker.gene[a],sep="")," in normalized expression is "),cutoff[[k]][a]))
+          }
+        }
+        else{
+          cutoff[[k]]=lapply(alist, function(alist) quantile(d1[alist,],threshold.cutoff)[[1]])
+        }
+      }else if(preset==0){
+        cutoff[[k]]=threshold.entry
+      }else if(preset==2){
+        for(w in 1:n.samples){
+          if(w==1){
+            d1=as.matrix(Clonal_Obs[[k]][["SCT"]]@data)[Gene_indUMO,]
+          }else{
+            d1=cbind(d1,as.matrix(Clonal_Obs[[k]][["SCT"]]@data)[Gene_indUMO,])
+          }
+        }
+        for(w in 1:n.samples){
+          cutoff[[w]]=lapply(alist, function(alist) quantile(d1[alist,],threshold.cutoff)[[1]])
+        }
+      }else{
+        print(paste(paste("Sample: ",k,sep=""),"not used for threshold"))
+      }
+      
+      Thresholds=matrix("unassigned",nrow=dim(Clonal_Obs[[k]])[2],ncol=length(Gene_indUMO))
+      for(s in 1:length(Gene_indUMO)){
+        vec1=Clonal_Obs[[k]][Gene_indUMO[s],][["SCT"]]@data
+        for(j in 1:dim(Clonal_Obs[[k]])[2]){
+          if(vec1[j]>cutoff[[c.index[k]]][s]){
+            Thresholds[j,s]="high"
+          }
+        }
+        Clonal_Obs[[k]]=AddMetaData(Clonal_Obs[[k]], Thresholds[,s], col.name = paste("Threshold_",marker.gene[s],sep=""))
+      }
+      
+      rm(mvsts.UMO)
+      rm(RnaStoreUMO)
+      
+    }
+    
+    ###############################################################
+    ##-----------------------------------------------------------##
+    ##         Annotate cells with clonotypes (TCRB)             ##
+    ##-----------------------------------------------------------##
+    ###############################################################
+    if(length(vdj.path)>0){
+      monoTRBNA=vector(mode = "list", length = n.samples)
+      monoTRBAA=vector(mode = "list", length = n.samples)
+      for(k in 1:n.samples){
+        monoTRBNA[[k]]=rep("unassigned",dim(Clonal_Obs[[k]])[2])
+        monoTRBAA[[k]]=rep("unassigned",dim(Clonal_Obs[[k]])[2])
+        
+        ##TRB loop for each single cell
+        for(j in 1:dim(Clonal_Obs[[k]])[2]){
+          
+          set_umo=subset(tcrhash[[k]],barcode==colnames(Clonal_Obs[[k]])[j] & productive==tenX_conversion & chain=="TRB")
+          TCRs=set_umo
+          len=length(set_umo$reads)
+          if(len==0){
+            
+          }
+          else if(len==1){
+            monoTRBNA[[k]][j]=set_umo$cdr3_nt
+            monoTRBAA[[k]][j]=set_umo$cdr3
+          }
+          else{
+            position= which.max(set_umo$reads)
+            monoTRBNA[[k]][j]=set_umo$cdr3_nt[position]
+            monoTRBAA[[k]][j]=set_umo$cdr3[position]
+          }
+          
+        }
+        
+      }
+      
+      IntersectTCRs=monoTRBNA[[1]]
+      if(n.samples>1){
+        for(h in 2:n.samples){
+          IntersectTCRs = intersect(IntersectTCRs,monoTRBNA[[h]])
+        }
+      }
+      
+      SizesC_Obj= vector(mode = "list", length = n.samples)
+      IMTCRs= vector(mode = "list", length = n.samples)
+      all.Cname= vector(mode = "list", length = n.samples)
+      all.Size= vector(mode = "list", length = n.samples)
+      for(q in 1:n.samples)
+      {
+        all.Cname[[q]]=rep("unassigned",dim(Clonal_Obs[[q]])[2])
+        all.Size[[q]]=rep(0,dim(Clonal_Obs[[q]])[2])
+      }
+      for(h in 1:n.samples){
+        Tailmono=setdiff(monoTRBNA[[h]],IntersectTCRs)
+        IMTCRs[[h]]=c(IntersectTCRs,Tailmono)
+        
+        SizesC_Obj[[h]]= rep(0,length(IMTCRs))
+        for(j in 1:length(IMTCRs[[h]])){
+          SizesC_Obj[[h]][j]=length(subset(tcrhash[[h]],cdr3_nt==IMTCRs[[h]][j] & productive==tenX_conversion & chain=="TRB")$barcode)
+        }
+        
+      }
+      
+      
+      Nclono= vector(mode = "list", length = n.samples)
+      for(q in 1:n.samples){
+        OSM=order(SizesC_Obj[[q]],decreasing=TRUE)
+        Nclono[[q]]=rep("blank",length(IMTCRs[[q]]))
+        for(f in 1: length(IMTCRs[[q]])){
+          if(f>length(IntersectTCRs)){
+            Nclono[[q]][OSM[f]]=paste(paste(paste("clonotype",f,sep=""),"_",sep=""),q,sep="")
+          }else{
+            Nclono[[q]][OSM[f]]=paste("clonotype",f,sep="")
+          }
+          
+        }
+      }
+      for(k in 1:n.samples){
+        clonotypes.nucleic.acid=data.frame(TCRs=IMTCRs[[k]],clonoT=Nclono[[k]],freqT=SizesC_Obj[[k]])
+        for(j in 1:dim(Clonal_Obs[[k]])[2]){
+          
+          if(monoTRBNA[[k]][j]=="unassigned"){
+            
+          }
+          else{
+            all.Size[[k]][j]=subset(clonotypes.nucleic.acid,TCRs==monoTRBNA[[k]][j])$freqT
+            all.Cname[[k]][j]=subset(clonotypes.nucleic.acid,TCRs==monoTRBNA[[k]][j])$clonoT
+          }
+          
+        }
+        
+        Clonal_Obs[[k]]=AddMetaData(Clonal_Obs[[k]], all.Cname[[k]], col.name = 'clonotype')
+        Clonal_Obs[[k]]=AddMetaData(Clonal_Obs[[k]], all.Size[[k]], col.name = 'countcln')
+      }
+      
+      #####################################################
+      ## Now add nucleotide CDR3 and Amino Acid CDR3     ##
+      #####################################################
+      
+      clono.nucleotide.seq= vector(mode = "list", length = n.samples)
+      clono.aminoacid.seq= vector(mode = "list", length = n.samples)
+      for(k in 1:n.samples){
+        clono.nucleotide.seq[[k]]=rep("unassigned",dim(Clonal_Obs[[k]])[2])
+        clono.aminoacid.seq[[k]]=rep("unassigned",dim(Clonal_Obs[[k]])[2])
+        
+        ##TRB loop
+        for(j in 1:dim(Clonal_Obs[[k]])[2]){
+          
+          set_umo=subset(tcrhash[[k]],barcode==colnames(Clonal_Obs[[k]])[j] & productive==tenX_conversion & chain=="TRB")
+          TCRs=set_umo
+          len=length(set_umo$reads)
+          if(len==0){
+            
+          }
+          else if(len==1){
+            mTRBNA=set_umo$cdr3_nt
+            mTRBAA=set_umo$cdr3
+            clono.nucleotide.seq[[k]][j]=mTRBNA
+            clono.aminoacid.seq[[k]][j]=mTRBAA
+          }
+          else{
+            position= which.max(set_umo$reads)
+            mTRBNA=set_umo$cdr3_nt[position]
+            mTRBAA=set_umo$cdr3[position]
+            clono.nucleotide.seq[[k]][j]=mTRBNA
+            clono.aminoacid.seq[[k]][j]=mTRBAA
+          }
+          
+        }
+        
+        Clonal_Obs[[k]]=AddMetaData(Clonal_Obs[[k]], clono.nucleotide.seq[[k]], col.name = 'cdr3_na')
+        Clonal_Obs[[k]]=AddMetaData(Clonal_Obs[[k]], clono.aminoacid.seq[[k]], col.name = 'cdr3')
+      }
+    }
+    Dataset=Clonal_Obs
+    saveRDS(Dataset,file.saved)
+    return(Dataset)
   }
+  else{
 
-Clonal_Obs= vector(mode = "list", length = n.samples)
-VDJ_Obs= vector(mode = "list", length = n.samples)
-tcrhash= vector(mode = "list", length = n.samples)
-cutoff= vector(mode = "list", length = n.samples)
-hashtagdata= vector(mode = "list", length = n.hashtag.samples)
 if(demultiplex){
-  n.samples=n.samples.ht
+  n.hashtag.samples=length(gex.path)
+  n.samples=n.ht.per.sample*n.hashtag.samples
   hashtagdata= vector(mode = "list", length = n.hashtag.samples)
   for(q in 1:n.hashtag.samples){
     clonal.data <- Read10X(data.dir = gex.path[[q]])
-hashtagdata[[q]] <- GMM_demux(sample.name[((q-1)*n.samples.ht)+1],clonal.data, demultiplex.index[(((q-1)*n.samples.ht)+1):((q)*n.samples.ht)],nameshashtags[(((q-1)*n.samples.ht)+1):((q)*n.samples.ht)])
+hashtagdata[[q]] <- GMM_demux(sample.name[((q-1)*n.ht.per.sample)+1],clonal.data, demultiplex.index[(((q-1)*n.ht.per.sample)+1):((q)*n.ht.per.sample)],nameshashtags[(((q-1)*n.ht.per.sample)+1):((q)*n.ht.per.sample)])
 
 }
 
-Clonal_Obs= vector(mode = "list", length = n.samples.ht*n.hashtag.samples)
+Clonal_Obs= vector(mode = "list", length = n.ht.per.sample*n.hashtag.samples)
 for(q in 1:n.hashtag.samples){
-for(k in 1:n.samples.ht){
+for(k in 1:n.ht.per.sample){
   Idents(hashtagdata[[q]]) <- "orig.ident"
   
-Clonal_Obs[[(q-1)*n.samples.ht+k]] = subset(hashtagdata[[q]],orig.ident %in% nameshashtags[(q-1)*n.samples.ht+k])
-Clonal_Obs[[(q-1)*n.samples.ht+k]][["percent.mt"]] <- PercentageFeatureSet(Clonal_Obs[[(q-1)*n.samples.ht+k]], pattern = "^MT-")
+Clonal_Obs[[(q-1)*n.ht.per.sample+k]] = subset(hashtagdata[[q]],orig.ident %in% nameshashtags[(q-1)*n.ht.per.sample+k])
+Clonal_Obs[[(q-1)*n.ht.per.sample+k]][["percent.mt"]] <- PercentageFeatureSet(Clonal_Obs[[(q-1)*n.ht.per.sample+k]], pattern = "^MT-")
 if(QC_plots){
-  options(repr.plot.width=10,repr.plot.height=5)
-  print(VlnPlot(Clonal_Obs[[(q-1)*n.samples.ht+k]], features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3))
+  print(VlnPlot(Clonal_Obs[[(q-1)*n.ht.per.sample+k]], features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3))
 }
-Clonal_Obs[[(q-1)*n.samples.ht+k]]<- subset(Clonal_Obs[[(q-1)*n.samples.ht+k]], subset = nFeature_RNA > nFeature_RNA_lower & nFeature_RNA < nFeature_RNA_upper & percent.mt < percent.mt_upper)
+Clonal_Obs[[(q-1)*n.ht.per.sample+k]]<- subset(Clonal_Obs[[(q-1)*n.ht.per.sample+k]], subset = nFeature_RNA > nFeature_RNA_lower & nFeature_RNA < nFeature_RNA_upper & percent.mt < percent.mt_upper)
 }
 }
 rm(clonal.data)
@@ -352,7 +651,7 @@ rm(clonal.data)
   Clonal_Obs[[k]] <- CreateSeuratObject(counts = clonal.data,project = sample.name[k])
   Clonal_Obs[[k]][["percent.mt"]] <- PercentageFeatureSet(Clonal_Obs[[k]], pattern = "^MT-")
   if(QC_plots){
-    VlnPlot(Clonal_Obs[[(q-1)*n.samples.ht+k]], features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), stack = TRUE)
+    QCPlot(Clonal_Obs[[(q-1)*n.ht.per.sample+k]], features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), stack = TRUE)
   }
   Clonal_Obs[[k]]<- subset(Clonal_Obs[[k]], subset = nFeature_RNA > nFeature_RNA_lower & nFeature_RNA < nFeature_RNA_upper & percent.mt < percent.mt_upper)
 
@@ -366,12 +665,13 @@ RnaStoreUMO=Clonal_Obs[[k]][['RNA']]$counts
 #VDJ list with barcodes
 if(length(vdj.path)>0){
   print(paste(paste("Reading in VDJ for sample ",k,sep=""),".",sep=""))
+  n.hashtag.samples=length(gex.path)
   if(demultiplex){
   if(k==1){
   vdj.path.temp=vdj.path
   vdj.path=0
   for(q in 1:n.hashtag.samples){
-    vdj.path=append(vdj.path,rep(vdj.path.temp[q],n.samples.ht))
+    vdj.path=append(vdj.path,rep(vdj.path.temp[q],n.ht.per.sample))
   }
   vdj.path=vdj.path[-1]
   }
@@ -668,4 +968,5 @@ Clonal_Obs[[k]]=AddMetaData(Clonal_Obs[[k]], clono.aminoacid.seq[[k]], col.name 
 Dataset=Clonal_Obs
 saveRDS(Dataset,file.saved)
 return(Dataset)
+}
 }
