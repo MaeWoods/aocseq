@@ -147,10 +147,10 @@ UMAPReduce <- function(
       rm(immune.list)
     }
     else{
-    immune.anchors <- Seurat::FindIntegrationAnchors(object.list = immune.list, anchor.features = features)
-    
-    rm(immune.list)
-    saveRDS(immune.anchors,paste(save.dir,"/immune.anchors.rds",sep=""))
+      immune.anchors <- Seurat::FindIntegrationAnchors(object.list = immune.list, anchor.features = features)
+      
+      rm(immune.list)
+      saveRDS(immune.anchors,paste(save.dir,"/immune.anchors.rds",sep=""))
     }
     immune.integrated <- Seurat::IntegrateData(anchorset = immune.anchors,features.to.integrate=features)
     rm(immune.anchors)
@@ -167,16 +167,16 @@ UMAPReduce <- function(
       
       #immune.integrated=Idents(immune.integrated,indent.list[k])
       #DimPlot(immune.integrated, reduction = "umap",split.by = ident.list[k])
-    pdf(paste(paste("UMAP",k,sep=""),".pdf",sep=""),width=10,height=5)
-    print(DimPlot(immune.integrated, reduction = "umap",split.by = ident.list[k]))
-    dev.off()
+      pdf(paste(paste("UMAP",k,sep=""),".pdf",sep=""),width=10,height=5)
+      print(DimPlot(immune.integrated, reduction = "umap",split.by = ident.list[k]))
+      dev.off()
     }
     
     if(length(clonotypes)>0){
       for(j in 1:length(clonotypes)){
-      pdf(paste(paste("UMAP_clonotype",j,sep=""),".pdf",sep=""),width=10,height=5)
-      print(DimPlot(subset(immune.integrated,cdr3_na %in% clonotypes[k]), reduction = "umap",split.by = indent.list[k]))
-      dev.off()
+        pdf(paste(paste("UMAP_clonotype",j,sep=""),".pdf",sep=""),width=10,height=5)
+        print(DimPlot(subset(immune.integrated,cdr3_na %in% clonotypes[k]), reduction = "umap",split.by = indent.list[k]))
+        dev.off()
       }
     }
     
@@ -202,7 +202,7 @@ UMAPReduce <- function(
     
   }
   
-
+  
 }
 
 
@@ -287,4 +287,166 @@ QCPlot <- function(
           panel.border = element_blank(),
           panel.background = element_blank())
   
+}
+
+
+SaveHeatmap <- function(
+    Resting.cells,
+    Act.ref,
+    CellsInRef,
+    path.glist,
+    heatmap.path,
+    verbose=TRUE
+){
+  
+  Resting.cellsinput=Resting.cells
+  
+  Resting.cells=as.matrix(Resting.cells@assays$RNA@counts)
+  PFcolsRoundone=mean(colSums(Resting.cells))
+  Resting.cells=log((1+(Resting.cells)))
+  PFcolsRoundtwo=mean(colSums(Resting.cells))
+  Resting.cells=Resting.cells/PFcolsRoundtwo
+  rm(PFcolsRoundone)
+  rm(PFcolsRoundtwo)
+  
+  # colnamesSig2=colnames(signature2.ref)
+  # GlistMat2=match(Glist,row.names(Resting.cells3))
+  # Sig3_M=Resting.cells3[GlistMat2,colnamesSig2]
+  
+  
+  Glist=setdiff(read.csv(path.glist)$x,"")[1:20]
+  cutoff=rep(0,length(Glist))
+  GlistIndSquer=match(Glist,row.names(Resting.cells))
+  
+  GlistIndS=match(Glist,row.names(Resting.cells))
+  
+  for(g in 1:6){
+    cutoff[g]=quantile(Resting.cells[GlistIndS[g],],.915)
+  }
+  
+  for(g in 7:7){
+    cutoff[g]=quantile(Resting.cells[GlistIndS[g],],.915)
+  }
+  
+  for(g in 8:15){
+    cutoff[g]=quantile(Resting.cells[GlistIndS[g],],.915)
+  }
+  
+  for(g in 16:20){
+    cutoff[g]=quantile(Resting.cells[GlistIndS[g],],.915)
+  }
+  
+  
+  Thresholds=matrix("unassigned",nrow=dim(Resting.cells)[2],ncol=length(GlistIndS))
+  for(s in 1:length(GlistIndS)){
+    vec1=Resting.cells[GlistIndS[s],]
+    for(j in 1:dim(Resting.cells)[2]){
+      if(vec1[j]>cutoff[s]){
+        Thresholds[j,s]="high"
+      }
+    }
+    Resting.cellsinput=AddMetaData(Resting.cellsinput, Thresholds[,s], col.name = paste("Signature_",Glist[s],sep=""))
+  }
+  
+  MatrixOfValues=as.matrix(Resting.cellsinput@meta.data[19:38])
+  NcellsSigmat=dim(MatrixOfValues)[[1]]
+  SignatureCell=rep(0,NcellsSigmat)
+  for(h in 1:NcellsSigmat){
+    if(length(subset(MatrixOfValues[h,],MatrixOfValues[h,]=="high"))>4){
+      SignatureCell[h]=1
+    }
+  }
+  
+  
+  Resting.cellsinput=AddMetaData(Resting.cellsinput, SignatureCell, col.name = "SignatureCell")
+  signature5.ref <- subset(Resting.cellsinput,(SignatureCell==1))
+  
+  colnamesSig5=colnames(signature5.ref)
+  GlistMat5=match(Glist,row.names(Resting.cells))
+  Sig_Unstim=Resting.cells[GlistMat5,colnamesSig5]
+  
+  
+  
+  
+  
+  
+  Glist=setdiff(read.csv(path.glist)$x,"")[1:20]
+  cutoff=rep(0,length(Glist))
+  GlistIndS=match(Glist,row.names(Sig_Unstim))
+  
+  #Act.ref
+  mat11=Sig_Unstim[GlistIndS,sample(1:dim(Sig_Unstim)[2],dim(Act.ref)[2])]
+  
+  
+  Glist=Glist[1:20]
+  library(preprocessCore)
+  col1Mat=cbind(Act.ref[1:20,],mat11)
+  
+  col1Mat=normalize.quantiles(t(as.matrix(col1Mat)))
+  colMat=as.matrix(col1Mat)
+  
+  
+  
+  #colMat=as.matrix(rbind(cbind(col1Mat,col2Mat),cbind(col3Mat,col4Mat)))
+  NWgenes=Glist
+  HeatmapDataNW=data.frame(Name=Glist,t(colMat))
+  
+  Ng_T=length(Glist)
+  Ng_T=1*length(Glist)
+  allcells=1
+  allgenes=1:(length(Glist))
+  
+  lengthA=CellsInRef
+  lengthB=CellsInRef
+  
+  
+  #Copy these subsets to a data frame so you can write as a matrix
+  xv=rep(1:Ng_T,lengthA)
+  vy=0
+  yyv=0
+  colsep=0
+  for(j in 1:lengthA){
+    vy=append(vy,HeatmapDataNW[,1+j])
+    yyv=append(yyv,rep(j,Ng_T))
+    colsep=append(colsep,1)
+  }
+  vy=vy[-1]
+  yyv=yyv[-1]
+  colsep=colsep[-1]
+  #CD8RA
+  xv=append(xv,rep(1:Ng_T,lengthB))
+  for(j in 1:lengthB){
+    vy=append(vy,HeatmapDataNW[,1+lengthA+j])
+    yyv=append(yyv,rep(j+lengthA+5,Ng_T))
+    colsep=append(colsep,2)
+  }
+  
+  
+  
+  HeatDF=data.frame(x=xv,y=yyv,cc=vy,sep=colsep)
+  
+  pdf(heatmap.path,width=9,height=4)  
+  print(ggplot(HeatDF,aes(x=y,y=101-x,fill=cc^(1/4),colour=cc^(1/4)))+
+    geom_tile(size=0.1)+
+    labs(fill="log(nCount)")+
+    scale_colour_gradientn(colours=c("black", "cornflowerblue","blue4"))+
+    scale_fill_gradientn(colours=c("black","midnightblue","navy","darkblue","blue4", "cornflowerblue","mediumspringgreen","white"))+
+    # annotate("text",label=HeatmapDataNW[,1],x=rep(0.2,20),y=0:24,size=30,fontface="bold",color="black")+
+    #  annotate("text",label=c("NTR","CLL1","CD70","BiCAR"),x=c(1,2,3,4),y=rep(-0.8,4),size=30,fontface="bold",color="black")+
+    ggtitle("PFlog1pPF")+
+    ylab(" ")+
+    xlab("Construct")+
+    theme(axis.title.x = element_text(size=10),
+          axis.title.y = element_text(size=9),
+          legend.text = element_text(size=5),
+          legend.key.width = unit(0.5, 'cm'),
+          legend.key.height = unit(0.5, 'cm'),
+          legend.title = element_text(size=9),
+          plot.title = element_text(size=9),
+          panel.background = element_blank(),
+          plot.background = element_blank(),
+          panel.border = element_blank(),
+          axis.ticks = element_blank(),
+          axis.text = element_blank()))
+  dev.off()
 }
