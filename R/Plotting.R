@@ -3,6 +3,7 @@
 #%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 #' Functions to plot data stored in clonal objects
 #' at normalized counts greater than the control
+#' @import ggpubr
 #'
 #' This function will read in Seurat objects processed by aocseq::CombineData
 #' and generate a ranked spreadsheet of clonotypes grouped by CDR3 beta sequence.
@@ -19,7 +20,7 @@
 #' @param segment.col Bool. If set to 1, the control is part of the dataset. If 0, a threshold
 #' value for each condition must be set.
 #' @param ribbon.hue List. List of thresholds for each condition if preset is 0.
-#' @param path
+#' @param path Path to outpt file.
 #' @return A data frame containing clonotypes and summary statistics of transcript expression.
 #' @concept Annotation
 #' @export
@@ -228,64 +229,79 @@ QCPlot <- function(
     Clonal_Obs,
     nFeature_RNA_lower=100,
     nFeature_RNA_upper=10000,
-    percent.mt_upper=5,
+    nCount_RNA_lower=100,
+    nCount_RNA_upper=10000,
+    percent.mt_upper=5
 ){
   
   ##Create a data frame
   combinedCounts=data.frame(nCount_RNA=Clonal_Obs@meta.data$nCount_RNA,
                             nFeature_RNA=Clonal_Obs@meta.data$nFeature_RNA,
                             percent.mt=Clonal_Obs@meta.data$percent.mt,
-                            name=Clonal_Obs@meta.data$orig.ident
-                            ColSplitRNA=ifelse(((Clonal_Obs@meta.data$nCount_RNA>nFeature_RNA_upper)|
-                                                  (Clonal_Obs@meta.data$nCount_RNA<nFeature_RNA_lower)),1,2),
-                            ColSplitMito=ifelse(((Clonal_Obs@meta.data$percent.mt>percent.mt_upper)),1,2))
+                            name=Clonal_Obs@meta.data$orig.ident,
+                            ColSplitCount=ifelse(((Clonal_Obs@meta.data$nCount_RNA>nCount_RNA_upper)|
+                                                  (Clonal_Obs@meta.data$nCount_RNA<nCount_RNA_lower)),"remove","use"),
+                            ColSplitRNA=ifelse(((Clonal_Obs@meta.data$nFeature_RNA>nFeature_RNA_upper)|
+                                                  (Clonal_Obs@meta.data$nFeature_RNA<nFeature_RNA_lower)),"remove","use"),
+                            ColSplitMito=ifelse(((Clonal_Obs@meta.data$percent.mt>percent.mt_upper)),"remove","use"))
   
   ##Plot the data frame
   par(mfrow = c(3, 1))
-  ggplot() + 
-    geom_violin(data=combinedCounts,aes(x=factor(name), y=nFeature_RNA ,fill=factor(ColSplitRNA)), alpha = 0.6 )+
-    geom_point(data=combinedCounts,aes(x=factor(name), y=nFeature_RNA ,fill=factor(ColSplitRNA)),position = position_dodge(width = .9), alpha = 1 )+
+  p1=ggplot() + 
+    geom_violin(data=combinedCounts,aes(x=factor(name), y=nFeature_RNA ), alpha = 0.6, fill="gray")+
+    geom_point(data=combinedCounts,aes(x=factor(name), y=nFeature_RNA ,color=factor(ColSplitRNA)), alpha = 1 )+
     geom_hline(yintercept=nFeature_RNA_upper)+
     geom_hline(yintercept=nFeature_RNA_lower)+
-    ylab("Count") +
+    ylab("Count per cell") +
     xlab("Sample") +
-    scale_fill_manual("Discarded data",values=c("red4","blue"))
-  ggtitle(factor(name)) +
+    scale_color_manual("",values=c("red4","blue"))+
+  ggtitle("Features") +
     theme(axis.line = element_line(colour = "black"),
           panel.grid.major = element_blank(),
           panel.grid.minor = element_blank(),
           panel.border = element_blank(),
+          plot.title = element_text(size = 8),
+          legend.position = "top",
           panel.background = element_blank())
   
-  ggplot() + 
-    geom_violin(data=combinedCounts,aes(x=factor(name), y=nCount_RNA ,fill=factor(ColSplitRNA)), alpha = 0.6 )+
-    geom_point(data=combinedCounts,aes(x=factor(name), y=nCount_RNA ,fill=factor(ColSplitRNA)),position = position_dodge(width = .9), alpha = 1 )+
-    geom_hline(yintercept=nFeature_RNA_upper)+
-    geom_hline(yintercept=nFeature_RNA_lower)+
-    ylab("Count") +
+  #print(p1)
+  
+  p2=ggplot() + 
+    geom_violin(data=combinedCounts,aes(x=factor(name), y=nCount_RNA ),fill="gray", alpha = 0.3 )+
+    geom_point(data=combinedCounts,aes(x=factor(name), y=nCount_RNA ,color=factor(ColSplitCount)), alpha = 1 )+
+    geom_hline(yintercept=nCount_RNA_upper)+
+    geom_hline(yintercept=nCount_RNA_lower)+
+    ylab("Count per cell") +
     xlab("Sample") +
-    scale_fill_manual("Discarded data",values=c("red4","blue"))
-  ggtitle(factor(name)) +
+    scale_color_manual("",values=c("red4","blue"))+
+  ggtitle("RNA count") +
     theme(axis.line = element_line(colour = "black"),
           panel.grid.major = element_blank(),
           panel.grid.minor = element_blank(),
           panel.border = element_blank(),
+          plot.title = element_text(size = 8),
+          legend.position = "top",
           panel.background = element_blank())
   
-  ggplot() + 
-    geom_violin(data=combinedCounts,aes(x=factor(name), y=percent.mt ,fill=ColSplitMito), alpha = 0.6 )+
-    geom_point(data=combinedCounts,aes(x=factor(name), y=percent.mt ,fill=ColSplitMito),position = position_dodge(width = .9), alpha = 1 )+
-    geom_hline(yintercept=nFeature_RNA_upper)+
-    geom_hline(yintercept=nFeature_RNA_lower)+
-    ylab("Count") +
+  #print(p2)
+  
+  p3=ggplot() + 
+    geom_violin(data=combinedCounts,aes(x=factor(name), y=percent.mt ), alpha = 0.6 )+
+    geom_point(data=combinedCounts,aes(x=factor(name), y=percent.mt ,color=factor(ColSplitMito)), alpha = 1 )+
+    geom_hline(yintercept=percent.mt_upper)+
+    ylab("Count per cell") +
     xlab("Sample") +
-    scale_fill_manual("Discarded data",values=c("red4","blue"))
-  ggtitle(factor(name)) +
+    scale_color_manual("",values=c("red4","blue"))+
+  ggtitle("Percent mitochondria") +
     theme(axis.line = element_line(colour = "black"),
           panel.grid.major = element_blank(),
           panel.grid.minor = element_blank(),
           panel.border = element_blank(),
+          plot.title = element_text(size = 8),
+          legend.position = "top",
           panel.background = element_blank())
+  
+  print(ggpubr::ggarrange(p1,p2,p3,ncol=3), common.legend = TRUE, legend = "top")
   
 }
 
