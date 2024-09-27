@@ -1,0 +1,46 @@
+---
+title: "Outlier Detection Vignette"
+author: "Noah Crooks"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{vignette}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.width=7,fig.height=3
+)
+```
+
+##Isolation Forest and Outlier Detection
+When examining the gene expression profiles of a population of cells, the presence of outliers can be biologically meaningful. Outliers may represent individual cells or clones exposed to unusual stimulus. For instance, a rare clone specific for a tumor neoantigen might overexpress activation markers like IFNG. However, outliers are often identified merely by gut feeling, rather than by any unbiased method. For usage with our aocseq package, we have included an implementation of the isolation forest, or iForest algorithm for anomaly detection, originally introduced by Fei Tony Luu et. al.(https://ieeexplore.ieee.org/document/4781136), with the goal of providing an easy to use method of identifying outlier cells from scRNA-seq data. The iForest algorithm works by creating an ensemble of binary trees from the input data, splitting the data over and over again at a random point using a random feature. Then, the depth at which each data point reaches a terminal node is recorded. Since anomalous data points are more likely to be split from the rest of the data earlier, points with a smaller depth are considered more anomalous. However, since variability between trees is high, the iForest algorithm records the average depth of each data point across all trees.
+
+##Usage
+Within aocseq, anomaly detection is handled by the iForest_wrapper function, which handles data acquisition and formatting and packages several other functions which handle tree creation, depth averaging, and calculation of the anomaly score for data point. First, we need to set our parameters.
+```{r}
+input.data<-CellData[[1]]
+marker.gene<-c('IFNG', 'GZMB', 'GZMA')
+tree.count<-100
+maximum_height<-20
+sample_number<-1000
+```
+
+iForest_wrapper assumes you have used CombineData to process your data, but you can use any normalized gene expression matrix. The second parameter is list of genes to use as features in the isolation forest model. This should usually be a short list of genes with similar or complementary functions, as longer lists with slow the algorithm considerably and genes with different functions will make the biological significance of outliers difficult to interpret. The last three parameters all have to do with the construction of the model. Tree.count will be the number of trees to be constructed and averaged over, maximum_height is the maximum height of each tree, and sample_number is the size of the random sample from the data that will be used to build each tree. Maximum_height is not particularly important, since outliers should be isolated in the first few levels. However, tree.count and sample_number need to be tuned based on the size and structure of your data. Unlike other types of models, which perform better the more data they have access to, the iForest algorithm often performs better when each tree is built on a subset of the total data. In addition, using a small tree.count and sample_number speeds up the algorithm. However, making sample_number or tree.count too small may mean that not every data point is sampled. Therefore, one needs to balance speed, performance, and data coverage when choosing values for these parameters. Once parameters are set, running the algorithm is simple.
+```{r}
+anomaly_results<-iForest_wrapper(input.data, 
+                marker.gene, 
+                tree.count, 
+                maximum_height, 
+                sample_number)
+```
+
+Anomaly scores closer to 1 indicate higher deviation from the norm. However, the cutoff for what constitutes an outlier is up to the user. It can help to visualize the distribution of scores.
+```{r}
+hist(anomaly_results$anomaly_score)
+```
+
