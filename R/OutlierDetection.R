@@ -1,6 +1,20 @@
-IFNG<-FetchData(CellData[[1]], 'IFNG')
-IFNG_GZMB<-FetchData(CellData[[1]], c('IFNG', 'GZMB'))
-IFNG_df<-data.frame(data=IFNG$IFNG)
+
+#%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+# construct_tree
+#%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+#' Build a binary tree from a numerical data frame
+#' 
+#' This function will build a binary tree from a numerical data frame and return
+#' a data frame containing each unique data point from the input data and the
+#' height at which each data point becomes "isolated" (reaches an external node)
+#' or the max_height.
+#' 
+#' @param data a numerical data frame
+#' @param current_height a parameter which tracks the current height of a given construct_tree instance, allows for recursive calling of the function
+#' @param max_height the maximum height the tree will grow to before stopping
+#' 
+#' @return a data frame containing the data for each unique point in the input data and the height at which that point was isolated
+#' @export
 
 construct_tree<-function(data, current_height, max_height){
   if(current_height==0){
@@ -38,7 +52,18 @@ construct_tree<-function(data, current_height, max_height){
   }
 }
 
-test<-construct_tree(IFNG, 0, 20)  
+#%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+# Iso_forest
+#%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+#' Build many trees on samples from data and average the heights
+#' 
+#' @param data a numerical data frame
+#' @param num_trees the number of trees to build and average over
+#' @param max_height the maximum height each tree will grow to before stopping
+#' @param subsample_count the size of the random sample that a tree will be built on. Cannot be larger than the number of rows in the data
+#' 
+#' @return a data frame containing the data for each unique point in the input data and the average height at which that point was isolated
+#' @export
 
 
 Iso_forest<-function(data, num_trees, max_height, subsample_count=nrow(data)){
@@ -71,14 +96,14 @@ Iso_forest<-function(data, num_trees, max_height, subsample_count=nrow(data)){
   }
   return(results_df)
 }
-test<-Iso_forest(IFNG_GZMB, 100, 20, 1000)  
+ 
 
 anomaly_score<-function(df){
   c<-2*(log(dim(df)[1]-1)+0.5772156649) - (2.0*(log(dim(df)[1]-1)/(log(dim(df)[1]*1.0))))
   df[,'anomaly_score']<-2^(-df[,'avg_height']/c)
   return(df)
 }
-marker.gene=c("IFNG","CRTAM","GZMB","CCR7","CCL1","SELL","CD28","CD27")
+
 
 iForest_wrapper<-function(CombineData_output,
                           gene_list, 
@@ -93,4 +118,4 @@ iForest_wrapper<-function(CombineData_output,
   output<-anomaly_score(df)
   return(output)
 }
-iForest_wrapper(CellData[[1]], marker.gene, 10, 20, 1000)
+
