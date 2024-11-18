@@ -170,6 +170,14 @@ ClassifyCells <- function(
       }
     }
   }
+  else if(distance==3){
+    
+    cell_types=levels(factor(output.array@meta.data$cdr3_na))[1:3]
+    
+    CMV_outliers<-CellTypeLoop(output.array,cell_types,signature.ref,Glist,
+              num_trees=10,max_height=20,subsample_count=ncol(control_set)+1, cutoff=.75)
+    
+  }
   return(output.array)
 
 }
@@ -179,7 +187,7 @@ ClassifyCells <- function(
 #%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 # Functions
 #%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-#' Return a data frame of meta data associatd with single cell data sets that
+#' Return a data frame of meta data associated with single cell data sets that
 #' contains a distance from a reference
 #'
 #' This function will compute the distance for each single cell. For
@@ -219,4 +227,122 @@ AddDistances <- function(
   return(cell.data)
 
 
+}
+
+#' Return a data frame of meta data associatd with single cell data sets that
+#' contains a distance from a reference
+#'
+#' This function will return the percentage of cells that are outliers when compared to a reference data set.
+#'
+#' @param test_data A Seurat object containing cells that are to be assigned a distance.
+#' @param cell_types A list of the cell types (currently this is clonotypes).
+#' @param control_set Normalized reference data.
+#' @param genes Genes to pull from the query dataset.
+#' @param num_trees Number of trees used for the isolation forest.
+#' @param max_height Maximum height used for the isolation forest.
+#' @param subsample_count Subsampling number for isolation forest.
+#' @param cutoff Maximum cutoff.
+#' @export
+CellTypeLoop<-function(
+    test_data, 
+    cell_types,
+    control_set, 
+    genes, 
+    num_trees, 
+    max_height, 
+    subsample_count=ncol(control_set)+1, 
+    cutoff=.75){
+  
+  unique_clones<-levels(factor(cell_types))
+  df<-data.frame(clones=unique_clones, outlier_fraction=vector(mode = 'numeric', length = length(unique_clones)))
+  for (i in 1:length(unique_clones)) {
+    print(paste0('processing ', unique_clones[i]))
+    select_clone<-subset(test_data, cdr3_na==unique_clones[i])
+    select_clone_mat<-select_clone@assays$SCT@data
+    clone_result<-percent_outlier(select_clone_mat, control_set, genes, num_trees, max_height, subsample_count, cutoff)
+    df[i,'outlier_fraction']<-clone_result$outlier_fraction
+  }
+  return(df)
+}
+
+myClonotypes=read.csv("/Users/maewoodsphd/mVSTManuscript/SupplementaryTables/final_mVSTIFNG/SummaryTable.csv")
+test_data=ThreeHourStim[[2]]
+cell_types=myClonotypes$Clone..nucleic.[10:13]
+control_set=ThreeHourStim[[1]]@assays$SCT@data
+genes=c("IFNG","GZMB")
+num_trees=10
+max_height=20
+subsample_count=ncol(control_set)+1
+cutoff=.75
+
+#' This function determines what constitues an outlier and what does not in the isolation forest algorithm
+#'
+#' @param df A data frame containing isolation forest distances
+#' @export
+anomaly_score<-function(df){
+  c<-2*(log(dim(df)[1]-1)+0.5772156649) - (2.0*(log(dim(df)[1]-1)/(log(dim(df)[1]*1.0))))
+  df[,'anomaly_score']<-2^(-df[,'avg_height']/c)
+  return(df)
+}
+
+#' Return a data frame of meta data associatd with single cell data sets that
+#' contains a distance from a reference
+#'
+#' This function will return the percentage of cells that are outliers when compared to a reference data set.
+#'
+#' @param test_data A Seurat object containing cells that are to be assigned a distance.
+#' @param cell_types A list of the cell types (currently this is clonotypes).
+#' @param control_set Normalized reference data.
+#' @param genes Genes to pull from the query dataset.
+#' @param num_trees Number of trees used for the isolation forest.
+#' @param max_height Maximum height used for the isolation forest.
+#' @param subsample_count Subsampling number for isolation forest.
+#' @param cutoff Maximum cutoff.
+#' @export
+percent_outlier<-function(
+    test_set, 
+    control_set, 
+    genes, 
+    num_trees, 
+    max_height, 
+    subsample_count=ncol(control_set)+1, 
+    cutoff=.75){
+  numcells<-ncol(test_set)
+  test_set<-test_set[genes,]
+  control_set<-control_set[genes,]
+  num_outliers<-0
+  anomaly_score_list<-c()
+  height_list=0
+  for (i in 1:numcells) {
+    cell<-test_set[, i]
+    if(length(genes)>1){
+      working_set<-cbind(as.matrix(control_set), cell)
+      
+      test_df<-as.data.frame(working_set[1,])
+      for (j in 2:length(genes)) {
+        working_gene=genes[j]
+        test_df[,working_gene]<-working_set[j,]
+      }
+    }
+    else{
+      working_set<-rbind(as.matrix(control_set), cell)
+      test_df<-as.data.frame(working_set)
+    }
+    
+    colnames(test_df)<-genes
+    height_df<-Iso_forest(test_df, num_trees, max_height, subsample_count,kurtosis_param=TRUE)
+    results_df<-anomaly_score(height_df)
+    cell_results<-results_df[do.call(paste0, results_df[,1:length(genes), drop=FALSE]) == do.call(paste0, as.list(cell)), ]
+    if(cell_results$anomaly_score>0.75){
+      num_outliers=num_outliers+1
+    }
+    height_list<-append(height_list, cell_results$avg_height)
+    anomaly_score_list<-append(anomaly_score_list, cell_results$anomaly_score)
+  }
+  height_list=height_list[-1]
+  return(data.frame(
+    clone_height=mean(height_list), 
+    clone_AS=mean(anomaly_score_list), 
+    outlier_fraction=num_outliers/numcells)
+  )
 }

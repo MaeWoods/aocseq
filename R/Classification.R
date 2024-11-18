@@ -671,6 +671,119 @@ DEsingle <- function(counts, group, goi, parallel = FALSE, BPPARAM = bpparam()){
 }
 
 
+#%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+# Isolation forest solvers
+#%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+# construct_tree
+#' Build a binary tree from a numerical data frame
+#' 
+#' This function will build a binary tree from a numerical data frame and return
+#' a data frame containing each unique data point from the input data and the
+#' height at which each data point becomes "isolated" (reaches an external node)
+#' or the max_height.
+#' 
+#' @param data a numerical data frame
+#' @param current_height a parameter which tracks the current height of a given construct_tree instance, allows for recursive calling of the function
+#' @param max_height the maximum height the tree will grow to before stopping
+#' @param kurtosis splits the data based on the kurtosis over the maximum gene distribution across the cells in the input data.
+#' 
+#' @return a data frame containing the data for each unique point in the input data and the height at which that point was isolated
+#' @export
+
+construct_tree<-function(data, current_height, max_height, kurtosis=TRUE){
+  
+  if(current_height==0){
+    output_df<<-unique(data)
+    output_df$height<<-rep(-1, nrow(output_df))
+    if(kurtosis){
+      output_df$ID<<-do.call(paste0, output_df[,1:ncol(data),drop=FALSE])
+    }
+  }
+  if(current_height == max_height|nrow(unique(data))==1){
+    for (i in 1:nrow(unique(data))) {
+      if(kurtosis){
+        data$ID<-do.call(paste0, data)
+        output_df$height[output_df$ID%in%data$ID]<<-current_height
+      }
+      else{
+        output_df$height[do.call(paste0, output_df[,1:ncol(data),drop=FALSE]) %in% do.call(paste0, unique(data)[i,1:ncol(data),drop=FALSE])]<<-current_height
+      }
+    }
+  }
+  else{
+    
+    if(kurtosis){
+      data_pared<-data[unlist(lapply(data, function(x){length(unique(x))!=1}))]
+      sample_attribute<-data_pared[kurtosis(data_pared)==max(kurtosis(data_pared), na.rm = TRUE)]
+      split_value<-runif(1, min=min(sample_attribute), max=max(sample_attribute))
+      split_left<-data[sample_attribute[,1]<=split_value, ,drop=FALSE]
+      split_right<-data[sample_attribute[,1]>split_value, , drop=FALSE]
+      
+      if(nrow(split_left)!=0){
+        left<-construct_tree(split_left, current_height+1, max_height)
+      }
+      if(nrow(split_right)!=0){
+        right<-construct_tree(split_right, current_height+1, max_height)
+      }
+    }
+    else{
+      sample_attribute<-data[sample(1:ncol(data), 1)]
+      split_value<-runif(1, min=min(sample_attribute), max=max(sample_attribute))
+      split_left<-data[sample_attribute[,1]<=split_value, ,drop=FALSE]
+      split_right<-data[sample_attribute[,1]>split_value, , drop=FALSE]
+      if(nrow(split_left)!=0){
+        left<-construct_tree(split_left, current_height+1, max_height,kurtosis=FALSE)
+      }
+      if(nrow(split_right)!=0){
+        right<-construct_tree(split_right, current_height+1, max_height,kurtosis=FALSE)
+      }
+    }
+    
+  }
+  if(all(output_df$height!=-1)){
+    return(output_df)
+  }
+}
+
+#%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+# Iso_forest
+#%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+#' Build many trees on samples from data and average the heights
+#' 
+#' @param data a numerical data frame
+#' @param num_trees the number of trees to build and average over
+#' @param max_height the maximum height each tree will grow to before stopping
+#' @param subsample_count the size of the random sample that a tree will be built on. Cannot be larger than the number of rows in the data
+#' @param kurtosis_param splits the data based on the kurtosis over the maximum gene distribution across the cells in the input data.
+#' 
+#' @return a data frame containing the data for each unique point in the input data and the average height at which that point was isolated
+#' @export
+
+Iso_forest<-function(data, num_trees, max_height, subsample_count=nrow(data),kurtosis_param=TRUE){
+  results_df<-unique(data)
+  results_df$avg_height<-rep(-1, nrow(results_df))
+  tree_counter<-0
+  while(tree_counter<num_trees) {
+    random_subsample<-data[sample(1:nrow(data), min(subsample_count, nrow(data))), ,drop=FALSE]
+    tree<-construct_tree(random_subsample, 0, max_height,kurtosis=kurtosis_param)
+    for(i in 1:nrow(tree)){
+      matched_logical<-do.call(paste0, results_df[,1:ncol(data), drop=FALSE]) %in% do.call(paste0, tree[i,1:ncol(data), drop=FALSE])
+      if(results_df$avg_height[matched_logical]==-1){
+        results_df$avg_height[matched_logical]<-tree[i, 'height']
+      }
+      else{
+        results_df$avg_height[matched_logical]<-mean(results_df$avg_height[matched_logical],tree[i, 'height'])
+      }
+    }
+    tree_counter<-tree_counter+1
+  }
+  if(any(results_df$avg_height==-1)){
+    print('Some data points were never sampled. Increase num_trees or subsample_count.')
+  }
+  return(results_df)
+}
 
 
 #%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -694,7 +807,7 @@ DEsingle <- function(counts, group, goi, parallel = FALSE, BPPARAM = bpparam()){
 #' @return A Seurat object list containing metadata and VDJ annotations.
 #' @concept annotation
 #' @export
-ClassifyClonotypes <- function(
+ClassifyCellTypes <- function(
     Clonal_Obs,
     Clonotypes,
     within.sample=FALSE,
@@ -997,6 +1110,10 @@ ClassifyClonotypes <- function(
     else if(method=="Taxi cab"){
       inputdistance=1
     }
+    else if(method=="isoForest"){
+      inputdistance=3
+      ClassifyCells(cell.data,cell.arrayPFlog1pPF,signature.ref,Glist,distance=inputdistance)
+    }
     path=paste(path,paste(paste(goi,"ClassificationTable",sep=""),".csv",sep=""),sep="")
     CloneList=subset(Clonotypes,avg>3)$Clone..nucleic.
     ClassArray=data.frame(matrix(ncol=(((length(Clonal_Obs)))+2),nrow=length(CloneList)))
@@ -1051,7 +1168,7 @@ ClassifyClonotypes <- function(
 
     }
 
-    write.csv(ClassArray,"/Users/maewoodsphd/NESTLES/SummaryTables/Callsification.csv")
+    write.csv(ClassArray,path)
   }
 }
 
