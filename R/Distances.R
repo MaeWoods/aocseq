@@ -173,19 +173,21 @@ ClassifyCells <- function(
   }
   else if(distance==3){
     
-    cell_types=levels(factor(output.array@meta.data$cdr3_na))[1:3]
+    #cell_types=levels(factor(output.array@meta.data$cdr3_na))[1:3]
     
     df<-CellTypeLoop(output.array,cell_types,signature.ref,Glist,
-     num_trees=10,max_height=20,subsample_count=ncol(control_set)+1, cutoff=.75)
+     num_trees=10,max_height=20,subsample_count=ncol(signature.ref)+1, cutoff=.75)
     
     clonallist=output.array@meta.data$cdr3_na
     MetaDataAdd=rep(0,dim(output.array)[2])
     for(s in 1:dim(output.array)[2]){
+      if(length(intersect(clonallist[s],cell_types))>0){
       idxclone=match(clonallist[s],cell_types)
       MetaDataAdd[s]=df$outlier_fraction[idxclone]
+      }
     }
     
-    output.array=AddMetaData(output.array, MetaDataAdd, col.name = paste(output.array@meta.data$orig.ident[1],'.Ofraction',sep=""))
+    output.array=AddMetaData(output.array, MetaDataAdd, col.name = '.Ofraction')
     
   }
   return(output.array)

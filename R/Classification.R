@@ -807,6 +807,16 @@ Iso_forest<-function(data, num_trees, max_height, subsample_count=nrow(data),kur
 #' @return A Seurat object list containing metadata and VDJ annotations.
 #' @concept annotation
 #' @export
+#' 
+#' 
+#' 
+
+Clonal_Obs=ThreeHourStim[1:2]
+Clonotypes=read_csv("/Users/maewoodsphd/mVSTManuscript/SupplementaryTables/final_mVSTIFNG/SummaryTable.csv")
+method="isoForest"
+goi=c("IFNG","CD69")
+path="/Users/maewoodsphd/mVSTManuscript"
+
 ClassifyCellTypes <- function(
     Clonal_Obs,
     Clonotypes,
@@ -1112,8 +1122,8 @@ ClassifyCellTypes <- function(
     }
     else if(method=="isoForest"){
    
-      ClassArray=data.frame(matrix(data="-",ncol=((4*(length(Clonal_Obs)-1))+2),nrow=length(CloneList)))
-      CloneList=subset(Clonotypes,avg>3)$Clone..nucleic.[15:17]
+      CloneList=subset(Clonotypes,avg>3)$`Clone (nucleic)`[15:17]
+      ClassArray=data.frame(matrix(data="-",ncol=(((length(Clonal_Obs)-1))+2),nrow=length(CloneList)))
       test_data=Clonal_Obs[[2]]
       cell_types=CloneList
       control_set=Clonal_Obs[[1]]@assays$SCT@data
@@ -1123,14 +1133,13 @@ ClassifyCellTypes <- function(
     }
     path=paste(paste(path,"/",sep=""),paste(paste(method,"ClassificationTable",sep=""),".csv",sep=""),sep="")
     print(path)
-    CloneList=subset(Clonotypes,avg>3)$Clone..nucleic.[15:17]
-    ClassArray=data.frame(matrix(ncol=(((length(Clonal_Obs)))+2),nrow=length(CloneList)))
+    CloneList=subset(Clonotypes,avg>3)$`Clone (nucleic)`[15:17]
+    #ClassArray=data.frame(matrix(ncol=(((length(Clonal_Obs)))+2),nrow=length(CloneList)))
     names.sample=0
     
     if(method=="isoForest"){
       names.sample=append(names.sample,c(paste(levels(factor(Clonal_Obs[[2]]@meta.data$orig.ident)),".Ofraction",sep="")))
-    }
-    else{
+    }else{
       for(j in 1:(length(Clonal_Obs)-1)){
       names.sample=append(names.sample,c(paste(levels(factor(Clonal_Obs[[j+1]]@meta.data$orig.ident)),".Rscore",sep="")))
       }
@@ -1162,7 +1171,7 @@ ClassifyCellTypes <- function(
       for(j in 1:(length(Clonal_Obs)-1)){
     array.name=1
     if(method=="isoForest"){
-      ClassArray[g,j]=mean(subset(Clonal_Obs[[j]],`cdr3_na` %in% CloneList[g])@meta.data$`.Ofraction`)
+      ClassArray[g,1]=subset(Clonal_Obs[[2]],`cdr3_na` %in% CloneList[g])@meta.data$.Ofraction[1]
     }
     else{
     ClassArray[g,j]=mean(subset(Clonal_Obs[[j]],`cdr3_na` %in% CloneList[g])@meta.data$Mdist)
