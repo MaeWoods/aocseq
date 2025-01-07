@@ -54,6 +54,8 @@
 #' @importFrom maxLik maxLik
 #' @importFrom pscl zeroinfl
 #' @importMethodsFrom Matrix colSums
+#' @concept Statistical inference
+#'
 #' @export
 
 DEsingle <- function(counts, group, goi, parallel = FALSE, BPPARAM = bpparam()){
@@ -690,6 +692,8 @@ DEsingle <- function(counts, group, goi, parallel = FALSE, BPPARAM = bpparam()){
 #' @param kurtosis splits the data based on the kurtosis over the maximum gene distribution across the cells in the input data.
 #' 
 #' @return a data frame containing the data for each unique point in the input data and the height at which that point was isolated
+#' @concept Routine functions
+#'
 #' @export
 
 construct_tree<-function(data, current_height, max_height, kurtosis=TRUE){
@@ -759,6 +763,8 @@ construct_tree<-function(data, current_height, max_height, kurtosis=TRUE){
 #' @param kurtosis_param splits the data based on the kurtosis over the maximum gene distribution across the cells in the input data.
 #' 
 #' @return a data frame containing the data for each unique point in the input data and the average height at which that point was isolated
+#' @concept Rutine functions
+#'
 #' @export
 
 Iso_forest<-function(data, num_trees, max_height, subsample_count=nrow(data),kurtosis_param=TRUE){
@@ -806,17 +812,9 @@ Iso_forest<-function(data, num_trees, max_height, subsample_count=nrow(data),kur
 #'
 #' @return A Seurat object list containing metadata and VDJ annotations.
 #' @concept annotation
+#' @concept Single cell analysis
+#'
 #' @export
-#' 
-#' 
-#' 
-
-Clonal_Obs=ThreeHourStim[1:2]
-Clonotypes=read_csv("/Users/maewoodsphd/mVSTManuscript/SupplementaryTables/final_mVSTIFNG/SummaryTable.csv")
-method="isoForest"
-goi=c("IFNG","CD69")
-path="/Users/maewoodsphd/mVSTManuscript"
-
 ClassifyCellTypes <- function(
     Clonal_Obs,
     Clonotypes,
@@ -1121,30 +1119,18 @@ ClassifyCellTypes <- function(
       inputdistance=1
     }
     else if(method=="isoForest"){
-   
-      CloneList=subset(Clonotypes,avg>3)$`Clone (nucleic)`[15:17]
-      ClassArray=data.frame(matrix(data="-",ncol=(((length(Clonal_Obs)-1))+2),nrow=length(CloneList)))
-      test_data=Clonal_Obs[[2]]
-      cell_types=CloneList
-      control_set=Clonal_Obs[[1]]@assays$SCT@data
-      genes=c("IFNG","CD69")
       inputdistance=3
-      Clonal_Obs[[2]]=ClassifyCells(test_data,control_set,control_set,genes,cell_types=cell_types,distance=inputdistance)
+      ClassifyCells(cell.data,cell.arrayPFlog1pPF,signature.ref,Glist,distance=inputdistance)
     }
-    path=paste(paste(path,"/",sep=""),paste(paste(method,"ClassificationTable",sep=""),".csv",sep=""),sep="")
-    print(path)
-    CloneList=subset(Clonotypes,avg>3)$`Clone (nucleic)`[15:17]
-    #ClassArray=data.frame(matrix(ncol=(((length(Clonal_Obs)))+2),nrow=length(CloneList)))
+    path=paste(path,paste(paste(goi,"ClassificationTable",sep=""),".csv",sep=""),sep="")
+    CloneList=subset(Clonotypes,avg>3)$Clone..nucleic.
+    ClassArray=data.frame(matrix(ncol=(((length(Clonal_Obs)))+2),nrow=length(CloneList)))
     names.sample=0
-    
-    if(method=="isoForest"){
-      names.sample=append(names.sample,c(paste(levels(factor(Clonal_Obs[[2]]@meta.data$orig.ident)),".Ofraction",sep="")))
-    }else{
-      for(j in 1:(length(Clonal_Obs)-1)){
-      names.sample=append(names.sample,c(paste(levels(factor(Clonal_Obs[[j+1]]@meta.data$orig.ident)),".Rscore",sep="")))
-      }
-    }
+    for(j in 1:(length(Clonal_Obs)-1)){
+      names.sample=append(names.sample,c(
+        paste(levels(factor(Clonal_Obs[[j]]@meta.data$orig.ident)),".Rscore",sep="")))
 
+    }
     names.sample=names.sample[-1]
     names.sample=append(names.sample,c("cdr3_na","phenotype"))
     names(ClassArray) <- names.sample
@@ -1170,29 +1156,25 @@ ClassifyCellTypes <- function(
 
       for(j in 1:(length(Clonal_Obs)-1)){
     array.name=1
-    if(method=="isoForest"){
-      ClassArray[g,1]=subset(Clonal_Obs[[2]],`cdr3_na` %in% CloneList[g])@meta.data$.Ofraction[1]
-    }
-    else{
+    Clonal_Obs[[j]]=AddDistances(Clonal_Obs[[j]],array.name,reference,path.glist,distance = inputdistance)
     ClassArray[g,j]=mean(subset(Clonal_Obs[[j]],`cdr3_na` %in% CloneList[g])@meta.data$Mdist)
-    }
       }
     }
 
     ###Find the percentile cutoff for the distance
-    # Thresh=quantile(ClassArray[,c.index],percentile)
-    # for(g in 1:length(CloneList)){
-    # 
-    #   for(j in 1:length(Clonal_Obs)){
-    #     if(ClassArray[g,j]<Thresh){
-    #   ClassArray[g,j]="Specific"
-    #     }
-    #     else{
-    #       ClassArray[g,j]="Bystander"
-    #     }
-    #   }
-    # 
-    # }
+    Thresh=quantile(ClassArray[,c.index],percentile)
+    for(g in 1:length(CloneList)){
+
+      for(j in 1:length(Clonal_Obs)){
+        if(ClassArray[g,j]<Thresh){
+      ClassArray[g,j]="Specific"
+        }
+        else{
+          ClassArray[g,j]="Bystander"
+        }
+      }
+
+    }
 
     write.csv(ClassArray,path)
   }

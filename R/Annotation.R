@@ -22,10 +22,12 @@
 #' @return A data frame containing clonotypes and summary statistics of transcript expression.
 #' @concept Annotation
 #' @export
-AnnotateClonotypes <- function(
+AnnotateCellTypes <- function(
     Clonal_Obs,
     goi,
+    cellType="cdr3_na",
     goi.threshold=.975,
+    TCR=TRUE,
     index.control.input=1,
     conditions=1,
     path="",
@@ -33,6 +35,7 @@ AnnotateClonotypes <- function(
     preset=1,
     threshold.entry=FALSE
 ){
+  CellTypePos=0
   if(length(index.control.input)==1){
     index.control=rep(1,length(Clonal_Obs))
   }
@@ -42,8 +45,10 @@ AnnotateClonotypes <- function(
   n.batch=length(Clonal_Obs)
   if(names.spreadsheet[1]==-1){
     names.spreadsheet=rep(" ",length(Clonal_Obs)*4)
-    names.spreadsheet=append("Clone (nucleic)",names.spreadsheet)
+    names.spreadsheet=append(paste("Clone ",cellType,sep=""),names.spreadsheet)
+    if(TCR==TRUE){
     names.spreadsheet=append(names.spreadsheet,"Clone (amino)")
+    }
   }
   else{
     for(g in 1:length(Clonal_Obs)){
@@ -59,15 +64,19 @@ AnnotateClonotypes <- function(
         
       }
     }
-    names.spreadsheet=append("Clone (nucleic)",names.spreadsheet)
+    names.spreadsheet=append(paste("Clone ",cellType,sep=""),names.spreadsheet)
+    if(TCR==TRUE){
     names.spreadsheet=append(names.spreadsheet,"Clone (amino)")
+    }
   }
   goi_samp=vector(mode = "list", length = conditions*n.batch)
+  celltype_samp=vector(mode = "list", length = conditions*n.batch)
   cutoff=vector(mode = "list", length = conditions)
   #match goi
   for(q in 0:(conditions-1)){
     for(k in 1:n.batch){
       goi_samp[[q*n.batch + k]]=match(goi, row.names(Clonal_Obs[[q*n.batch + k]][["SCT"]]@data))
+      celltype_samp[[q*n.batch + k]]=match(cellType, names(Clonal_Obs[[q*n.batch + k]]@meta.data))
       if((preset==1)&&(k==index.control[1])){
         cutoff[[(q+1)]]=quantile(Clonal_Obs[[index.control[(q+1)]]][["SCT"]]@data[goi_samp[[q*n.batch + k]],],goi.threshold)[[1]]
       }else if(preset==0){
@@ -76,31 +85,36 @@ AnnotateClonotypes <- function(
       }
     }
   }
+  if(length(levels(factor(celltype_samp)))>1){
+    print("Error: CellType meta data column not in same position for each sample")
+  }
+  CellTypePos=celltype_samp[[1]]
+  
   #Find intersection and union of all clonotypes
   allclonotypes = c()
   intersectclonotypes=c()
   if(length(Clonal_Obs)==1){
-    allclonotypes = levels(factor(Clonal_Obs[[1]]@meta.data$cdr3_na))
-    intersectclonotypes=levels(factor(Clonal_Obs[[1]]@meta.data$cdr3_na))
+    allclonotypes = levels(factor(Clonal_Obs[[1]]@meta.data[[CellTypePos]]))
+    intersectclonotypes=levels(factor(Clonal_Obs[[1]]@meta.data[[CellTypePos]]))
     
   }
   else{
-    allclonotypes = union(Clonal_Obs[[1]]@meta.data$cdr3_na,Clonal_Obs[[2]]@meta.data$cdr3_na)
-    intersectclonotypes=intersect(Clonal_Obs[[1]]@meta.data$cdr3_na,Clonal_Obs[[2]]@meta.data$cdr3_na)
+    allclonotypes = union(Clonal_Obs[[1]]@meta.data[[CellTypePos]],Clonal_Obs[[2]]@meta.data[[CellTypePos]])
+    intersectclonotypes=intersect(Clonal_Obs[[1]]@meta.data[[CellTypePos]],Clonal_Obs[[2]]@meta.data[[CellTypePos]])
     for(g in 1:length(Clonal_Obs)){
       if(g<3){
         
       }
       else{
-        allclonotypes = union(allclonotypes,Clonal_Obs[[g]]@meta.data$cdr3_na)
-        intersectclonotypes=intersect(intersectclonotypes,Clonal_Obs[[g]]@meta.data$cdr3_na)
+        allclonotypes = union(allclonotypes,Clonal_Obs[[g]]@meta.data[[CellTypePos]])
+        intersectclonotypes=intersect(intersectclonotypes,Clonal_Obs[[g]]@meta.data[[CellTypePos]])
         
       }
     }
     for(q in 0:(conditions-1)){
       for(k in 1:n.batch){
-        allclonotypes = union(allclonotypes,Clonal_Obs[[q*n.batch + k]]@meta.data$cdr3_na)
-        intersectclonotypes=intersect(intersectclonotypes,Clonal_Obs[[q*n.batch + k]]@meta.data$cdr3_na)
+        allclonotypes = union(allclonotypes,Clonal_Obs[[q*n.batch + k]]@meta.data[[CellTypePos]])
+        intersectclonotypes=intersect(intersectclonotypes,Clonal_Obs[[q*n.batch + k]]@meta.data[[CellTypePos]])
       }
     }
   }
@@ -111,16 +125,16 @@ AnnotateClonotypes <- function(
   sample.clonotypes=vector(mode = "list", length = conditions*n.batch)
   
   if(preset==1){
-    sample.clonotypes[[index.control[1]]]=setdiff(levels(factor(Clonal_Obs[[index.control[1]]]@meta.data$cdr3_na)),"unassigned")
+    sample.clonotypes[[index.control[1]]]=setdiff(levels(factor(Clonal_Obs[[index.control[1]]]@meta.data[[CellTypePos]])),"unassigned")
     combine.clonotypes = sample.clonotypes[[index.control[1]]]
   }else{
-    combine.clonotypes = setdiff(levels(factor(Clonal_Obs[[1]]@meta.data$cdr3_na)),"unassigned")
+    combine.clonotypes = setdiff(levels(factor(Clonal_Obs[[1]]@meta.data[[CellTypePos]])),"unassigned")
     combine.clonotypes = sample.clonotypes[[1]]
   }
   for(q in 0:(conditions-1)){
     for(k in 1:n.batch){
       if(((preset==1)&(index.control[1]!=k))|((preset==0)&(q>0))){
-        sample.clonotypes[[q*n.batch + k]]=setdiff(setdiff(levels(factor(Clonal_Obs[[q*n.batch + k]]@meta.data$cdr3_na)),"unassigned"),combine.clonotypes)
+        sample.clonotypes[[q*n.batch + k]]=setdiff(setdiff(levels(factor(Clonal_Obs[[q*n.batch + k]]@meta.data[[CellTypePos]])),"unassigned"),combine.clonotypes)
         combine.clonotypes=union(combine.clonotypes,sample.clonotypes[[q*n.batch + k]])
       }
     }
@@ -136,7 +150,7 @@ AnnotateClonotypes <- function(
     for(q in 0:(conditions-1)){
       for(d in 1:n.batch){
         if(length(intersect(allclonotypes[k],sample.clonotypes[[q*n.batch + d]]))>0){
-          Clonefreq[k]=subset(Clonal_Obs[[q*n.batch + d]],cdr3_na==allclonotypes[k])@meta.data$countcln[1]
+          Clonefreq[k]=Clonal_Obs[[q*n.batch + d]]@meta.data$countcln[which(Clonal_Obs[[q*n.batch + d]]@meta.data[[CellTypePos]]==allclonotypes[k])][1]
           if(length(intersect(allclonotypes[k],intersectclonotypes))>0){
             Shared[k]="yes"
           }
@@ -169,10 +183,10 @@ AnnotateClonotypes <- function(
       CD8_c[[q*n.batch + d]]=rep(0,length(allclonotypes))
       All_c[[q*n.batch + d]]=rep(0,length(allclonotypes))
       Total_c[[q*n.batch + d]]=rep(0,length(allclonotypes))
-      TCR_seq[[q*n.batch + d]]=Clonal_Obs[[q*n.batch + d]]@meta.data$cdr3_na
-      CD4df[[q*n.batch + d]]=data.frame(clonotype=subset(Clonal_Obs[[q*n.batch + d]],CD4cells=="1")@meta.data$cdr3_na,mark=subset(Clonal_Obs[[q*n.batch + d]],CD4cells=="1")@meta.data[[match(paste("Threshold_",goi,sep=""),names(Clonal_Obs[[q*n.batch + d]]@meta.data))]])
-      CD8df[[q*n.batch + d]]=data.frame(clonotype=subset(Clonal_Obs[[q*n.batch + d]],CD8cells=="1")@meta.data$cdr3_na,mark=subset(Clonal_Obs[[q*n.batch + d]],CD8cells=="1")@meta.data[[match(paste("Threshold_",goi,sep=""),names(Clonal_Obs[[q*n.batch + d]]@meta.data))]])
-      Alldf[[q*n.batch + d]]=data.frame(clonotype=Clonal_Obs[[q*n.batch + d]]@meta.data$cdr3_na,mark=Clonal_Obs[[q*n.batch + d]]@meta.data[[match(paste("Threshold_",goi,sep=""),names(Clonal_Obs[[q*n.batch + d]]@meta.data))]])
+      TCR_seq[[q*n.batch + d]]=Clonal_Obs[[q*n.batch + d]]@meta.data[[CellTypePos]]
+      CD4df[[q*n.batch + d]]=data.frame(clonotype=subset(Clonal_Obs[[q*n.batch + d]],CD4cells=="1")@meta.data[[CellTypePos]],mark=subset(Clonal_Obs[[q*n.batch + d]],CD4cells=="1")@meta.data[[match(paste("Threshold_",goi,sep=""),names(Clonal_Obs[[q*n.batch + d]]@meta.data))]])
+      CD8df[[q*n.batch + d]]=data.frame(clonotype=subset(Clonal_Obs[[q*n.batch + d]],CD8cells=="1")@meta.data[[CellTypePos]],mark=subset(Clonal_Obs[[q*n.batch + d]],CD8cells=="1")@meta.data[[match(paste("Threshold_",goi,sep=""),names(Clonal_Obs[[q*n.batch + d]]@meta.data))]])
+      Alldf[[q*n.batch + d]]=data.frame(clonotype=Clonal_Obs[[q*n.batch + d]]@meta.data[[CellTypePos]],mark=Clonal_Obs[[q*n.batch + d]]@meta.data[[match(paste("Threshold_",goi,sep=""),names(Clonal_Obs[[q*n.batch + d]]@meta.data))]])
     }
   }
   
@@ -239,8 +253,13 @@ AnnotateClonotypes <- function(
     vec_Cs=vec_Cs[-1]
     AvgCloneSize[k]=ceiling(mean(vec_Cs))
   }
-  
+  Summarydf=data.frame()
+  if(TCR==TRUE){
   Summarydf=data.frame(matrix(ncol = ((conditions*n.batch)*4+2), nrow = length(Clone)))
+  }
+  else{
+    Summarydf=data.frame(matrix(ncol = ((conditions*n.batch)*4+1), nrow = length(Clone)))
+  }
   Summarydf[,1]=Clone
   for(q in 0:(conditions-1)){
     for(d in 1:n.batch){
@@ -260,10 +279,13 @@ AnnotateClonotypes <- function(
   
   for(q in 0:(conditions-1)){
     for(d in 1:n.batch){
+      if(TCR==TRUE){
       AAs[[q*n.batch + d]]=Clonal_Obs[[q*n.batch + d]]@meta.data$cdr3
-      NTs[[q*n.batch + d]]=Clonal_Obs[[q*n.batch + d]]@meta.data$cdr3_na
+      }
+      NTs[[q*n.batch + d]]=Clonal_Obs[[q*n.batch + d]]@meta.data[[CellTypePos]]
     }}
   
+  if(TCR==TRUE){
   for(b in 0:(conditions-1)){
     for(d in 1:n.batch){
       for(q in 1:length(Amino_Acid_seq)){
@@ -279,6 +301,7 @@ AnnotateClonotypes <- function(
     }}
   
   Summarydf[,4*(conditions*n.batch)+2]=Amino_Acid_seq
+  }
   names(Summarydf) <- names.spreadsheet
   Summarydf$avg=AvgCloneSize
   IndexMedian=order(AvgCloneSize,decreasing=TRUE)
@@ -287,5 +310,6 @@ AnnotateClonotypes <- function(
     Summarydf[,k]=Summarydf[IndexMedian,k]
   }
   write.csv(Summarydf,path)
+  return(Summarydf)
   
 }

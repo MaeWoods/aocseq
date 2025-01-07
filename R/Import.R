@@ -19,6 +19,7 @@
 #' @param sd.vector Vector containing the mean of each component
 #' @param alpha.vector Vector containing the mixing weights  of each component
 #' @return Named list containing the loglik and posterior.df
+#' @concept Routine functions
 #' @export
 e_step <- function(x, mu.vector, sd.vector, alpha.vector) {
   comp1.prod <- dnorm(x, mu.vector[1], sd.vector[1]) * alpha.vector[1]
@@ -40,10 +41,12 @@ e_step <- function(x, mu.vector, sd.vector, alpha.vector) {
 #'
 #' @param x Input data.
 #' @param posterior.df Posterior probability data.frame.
-#' @return Named list containing the mean (mu), variance (var), and mixing
-#'   weights (alpha) for each component.
+#' 
+#' @return Named list containing the mean (mu), variance (var), and mixing weights (alpha) for each component.
+#' @concept Routine functions
 #' @export
-m_step <- function(x, posterior.df) {
+m_step <- function(x, posterior.df
+){
   comp1.n <- sum(na.omit(posterior.df[, 1]))
   comp2.n <- sum(na.omit(posterior.df[, 2]))
 
@@ -68,26 +71,72 @@ m_step <- function(x, posterior.df) {
 #'
 #' Demultiplex arbitrary number of hashtags
 #'
+#' @param s.name Input data. 10x object with hashtags
 #' @param data Input data. 10x object with hashtags
-#' @param hashtag_index list containing positions of hashtags to be demultiplexed
+#' @param hashtag.index list containing positions of hashtags to be demultiplexed
 #' @param nameshashtags Subsets of the sample for new orig.ident
-#' @param s.name Name of the sample
-#' @return A Seurat object that is has
+#' @param set.col.name Subsets of the sample for new orig.ident
+#' @param Seurat_Object Name of the sample
+#' 
+#' @return A Seurat object that has been split by hastagged demultiplexing. 
+#' @concept Statistical inference
 #' @export
-GMM_demux<-function(s.name,data, hashtag_index, nameshashtags){
+GMM_demux<-function(
+    s.name,
+    data, hashtag.index, 
+    nameshashtags, 
+    set.col.name='Hashtags',
+    Seurat_Object=FALSE
+){
 
+
+  
+  denom_fn <- function(inputmat,nvar,pos) 
+  {
+    matrixStats::product((subset(inputmat,inputmat[,pos]>0)[,pos]))^(1/nvar)
+  }
+  
+  Total_T_Cells=0
+  pbmc.htos=0
+  if(Seurat_Object==FALSE){
   Total_T_Cells=length(data$`Gene Expression`@p)
-  pbmc.htos <- data$`Antibody Capture`
+  pbmc.htos=data$`Antibody Capture`
+  }
+  else{
+    Total_T_Cells=dim(data)[2]
+    pbmc.htos=data[['HTO']]@counts
+  }
   temp=t(as.matrix(pbmc.htos))+1
   tempqp=temp
+  
+  Denom_arr=c(denom_fn(temp,Total_T_Cells,1),
+              denom_fn(temp,Total_T_Cells,2),
+              denom_fn(temp,Total_T_Cells,3),
+              denom_fn(temp,Total_T_Cells,4),
+              denom_fn(temp,Total_T_Cells,5),
+              denom_fn(temp,Total_T_Cells,6),
+              denom_fn(temp,Total_T_Cells,7),
+              denom_fn(temp,Total_T_Cells,8),
+              denom_fn(temp,Total_T_Cells,9),
+              denom_fn(temp,Total_T_Cells,10))
+  
+  clrfn <- function(j)
+  {
+    log(temp[,j]/Denom_arr[j])
+  }
+  
+  tempqp=matrix(0, nrow = dim(temp)[1], ncol = dim(temp)[2]) 
+  tempqp=lapply(list(1:10), clrfn)[[1]]
+  tempqp[!is.finite(tempqp)] <- NA
+  
   mu.cont<-c()
   var.cont<-c()
   alpha.cont<-c()
   #KMeans and model fitting loop
-  for (i in 1:length(hashtag_index)) {
+  for (i in 1:length(hashtag.index)) {
 
-    tempqp[,hashtag_index[i]]<-log(temp[,hashtag_index[i]]/matrixStats::product((subset(temp,temp[,hashtag_index[i]]>0)[,hashtag_index[i]])^(1/Total_T_Cells)))
-    wait <- tempqp[,hashtag_index[i]]
+    tempqp[,hashtag.index[i]]<-log(temp[,hashtag.index[i]]/matrixStats::product((subset(temp,temp[,hashtag.index[i]]>0)[,hashtag.index[i]])^(1/Total_T_Cells)))
+    wait <- tempqp[,hashtag.index[i]]
 
     wait.kmeans <- kmeans(na.omit(wait), 2)
     wait.kmeans.cluster <- wait.kmeans$cluster
@@ -130,7 +179,7 @@ GMM_demux<-function(s.name,data, hashtag_index, nameshashtags){
     alpha.cont<-append(alpha.cont, m.step1$alpha)
   }
 
-  Mhash<-matrix(0, nrow = dim(temp)[1], ncol = length(hashtag_index)+1)
+  Mhash<-matrix(0, nrow = dim(temp)[1], ncol = length(hashtag.index)+1)
   donorlabel=rep("unassigned",length(tempqp[,1]))
   samplelabels=rep("unassigned",length(tempqp[,1]))
 
@@ -138,14 +187,14 @@ GMM_demux<-function(s.name,data, hashtag_index, nameshashtags){
   for(j in 1:length(tempqp[,1])){
     high.cont<-c()
     low.cont<-c()
-    for(k in hashtag_index){
+    for(k in hashtag.index){
 
-      if(mu.cont[match(k,hashtag_index)*2]>mu.cont[(match(k,hashtag_index)*2)-1]){
+      if(mu.cont[match(k,hashtag.index)*2]>mu.cont[(match(k,hashtag.index)*2)-1]){
         x=tempqp[j,k]
-        low=alpha.cont[match(k,hashtag_index)*2-1]
-        high=alpha.cont[match(k,hashtag_index)*2]
-        xgivenPz_ihigh = dnorm(x, mean = mu.cont[match(k,hashtag_index)*2], sd = var.cont[match(k,hashtag_index)*2], log = FALSE)
-        xgivenPz_ilow = dnorm(x, mean = mu.cont[match(k,hashtag_index)*2-1], sd = var.cont[match(k,hashtag_index)*2-1], log = FALSE)
+        low=alpha.cont[match(k,hashtag.index)*2-1]
+        high=alpha.cont[match(k,hashtag.index)*2]
+        xgivenPz_ihigh = dnorm(x, mean = mu.cont[match(k,hashtag.index)*2], sd = var.cont[match(k,hashtag.index)*2], log = FALSE)
+        xgivenPz_ilow = dnorm(x, mean = mu.cont[match(k,hashtag.index)*2-1], sd = var.cont[match(k,hashtag.index)*2-1], log = FALSE)
         Px_i = xgivenPz_ilow*low + xgivenPz_ihigh*high
         K1Pz_ihighgiven_x = (xgivenPz_ihigh*high)/Px_i
         K1Pz_ilowgiven_x = (xgivenPz_ilow*low)/Px_i
@@ -153,10 +202,10 @@ GMM_demux<-function(s.name,data, hashtag_index, nameshashtags){
       }
       else{
         x=tempqp[j,k]
-        low=alpha.cont[match(k,hashtag_index)*2]
-        high=alpha.cont[match(k,hashtag_index)*2-1]
-        xgivenPz_ihigh = dnorm(x, mean = mu.cont[match(k,hashtag_index)*2-1], sd = var.cont[match(k,hashtag_index)*2-1], log = FALSE)
-        xgivenPz_ilow = dnorm(x, mean = mu.cont[match(k,hashtag_index)*2], sd=var.cont[match(k,hashtag_index)*2], log = FALSE)
+        low=alpha.cont[match(k,hashtag.index)*2]
+        high=alpha.cont[match(k,hashtag.index)*2-1]
+        xgivenPz_ihigh = dnorm(x, mean = mu.cont[match(k,hashtag.index)*2-1], sd = var.cont[match(k,hashtag.index)*2-1], log = FALSE)
+        xgivenPz_ilow = dnorm(x, mean = mu.cont[match(k,hashtag.index)*2], sd=var.cont[match(k,hashtag.index)*2], log = FALSE)
         Px_i = xgivenPz_ilow*low + xgivenPz_ihigh*high
         K1Pz_ihighgiven_x = (xgivenPz_ihigh*high)/Px_i
         K1Pz_ilowgiven_x = (xgivenPz_ilow*low)/Px_i
@@ -182,7 +231,7 @@ GMM_demux<-function(s.name,data, hashtag_index, nameshashtags){
     for (i in 1:length(probs)) {
       if((max(probs)==probs[i])&(i<length(probs))){
         Mhash[j,i]=1
-        donorlabel[j]=paste('donor_',as.character(i), sep = '')
+        donorlabel[j]=nameshashtags[i]
       }
       else if ((max(probs)==probs[i])&(i==length(probs))){
         Mhash[j,i]=1
@@ -210,15 +259,21 @@ GMM_demux<-function(s.name,data, hashtag_index, nameshashtags){
   row.names(Full) <- row.names(temp)
   Full1=na.omit(Full)
   donormat <- t(as.matrix(donorlabel))
+  if(Seurat_Object==FALSE){
   colnames(donormat) <- row.names(temp)
   joint.bcs <- intersect(colnames(data$`Gene Expression`), colnames(t(Full1)))
   pbmc.htos <- t(Full1)[, joint.bcs]
+  
   data=CreateSeuratObject(counts = data$`Gene Expression`,project = s.name)
-  data=AddMetaData(data, donorlabel, col.name = 'Hashtags')
+  data[["HTO"]]=CreateAssayObject(counts = pbmc.htos)
+  }
+  else{
+  data=AddMetaData(data, donorlabel, col.name = set.col.name)
+  }
 
   for (i in 1:length(nameshashtags)) {
     for(j in 1:length(tempqp[,1])){
-    if(donorlabel[j]==paste('donor_',as.character(i), sep = '')){
+    if(donorlabel[j]==nameshashtags[i]){
       samplelabels[j]=nameshashtags[i]
     }
     }
@@ -246,7 +301,7 @@ GMM_demux<-function(s.name,data, hashtag_index, nameshashtags){
 #' @param index.control index of the control sequencing sample
 #' @param c.index index of the control sequencing sample
 #' @param sample.name index of the control sequencing sample
-#' @param preset If set to 1, preset determines the threshold for cutoff if a control is included in the assay
+#' @param preset If set to 1, preset determines the threshold for cutoff if a control is included in the assay. If set to 0 a cutoff is set by the threshold.entry, which defines what value is high for all samples. If set to 2 a cutoff is set per sample using 
 #' @param threshold.entry Double. Sets the percentile above which gene expression is labelled as high.
 #' @param demultiplex Boolean value used to indicate if the data was hashtagged
 #' @param demultiplex.index Boolean value used to indicate if the data was hashtagged
@@ -261,7 +316,7 @@ GMM_demux<-function(s.name,data, hashtag_index, nameshashtags){
 #' @param QC_plots Print progress bars and output
 #'
 #' @return A Seurat object list containing metadata and VDJ annotations.
-#' @concept annotation
+#' @concept Annotation & quality control
 #' @export
 CombineData <- function(
   gex.path,
@@ -283,13 +338,21 @@ CombineData <- function(
   nFeature_RNA_upper=10000,
   nvariable_features=3000,
   percent.mt_upper=5,
+  data.input="raw",
+  upperQ=.95,
+  lowerQ=.05,
   verbose=TRUE,
   QC_plots=FALSE
 ){
 
   #Set undefined parameters
   if(c.index[1]==-1){
-    c.index=rep(1,n.ht.per.sample)
+    if(demultiplex){
+      c.index=rep(1,n.ht.per.sample)
+    }
+    else{
+    c.index=rep(1,length(gex.path))
+    }
   }
   if(sample.name[1]==-1){
     for(j in 1:length(gex.path)){
@@ -322,7 +385,7 @@ CombineData <- function(
   }
   
     n.samples=length(gex.path)
-  
+    myvec1=list()
   
   Clonal_Obs= vector(mode = "list", length = n.samples)
   VDJ_Obs= vector(mode = "list", length = n.samples)
@@ -348,18 +411,21 @@ CombineData <- function(
           Clonal_Obs[[(q-1)*n.ht.per.sample+k]] = subset(hashtagdata[[q]],orig.ident %in% nameshashtags[(q-1)*n.ht.per.sample+k])
           Clonal_Obs[[(q-1)*n.ht.per.sample+k]][["percent.mt"]] <- PercentageFeatureSet(Clonal_Obs[[(q-1)*n.ht.per.sample+k]], pattern = "^MT-")
           if(QC_plots){
-            nFeature_RNA_upper=quantile(Clonal_Obs[[(q-1)*n.ht.per.sample+k]]@meta.data$nFeature_RNA,.95)
-            nFeature_RNA_lower=quantile(Clonal_Obs[[(q-1)*n.ht.per.sample+k]]@meta.data$nFeature_RNA,.05)
-            nCount_RNA_upper=quantile(Clonal_Obs[[(q-1)*n.ht.per.sample+k]]@meta.data$nCount_RNA,.95)
-            nCount_RNA_lower=quantile(Clonal_Obs[[(q-1)*n.ht.per.sample+k]]@meta.data$nCount_RNA,.05)
-            percent.mt_upper=5
-            print(QCPlot(Clonal_Obs[[(q-1)*n.ht.per.sample+k]], nFeature_RNA_lower=nFeature_RNA_lower,
-                         nFeature_RNA_upper=nFeature_RNA_upper,
-                         nCount_RNA_lower=nCount_RNA_lower,
-                         nCount_RNA_upper=nCount_RNA_upper,
-                         percent.mt_upper=percent.mt_upper))
+            if(data.input=="raw"){
+              Clonal_Obs[[k]]<- subset(Clonal_Obs[[k]], nFeature_RNA > nFeature_RNA_lower & nFeature_RNA < nFeature_RNA_upper & percent.mt < percent.mt_upper)
             }
-          Clonal_Obs[[(q-1)*n.ht.per.sample+k]]<- subset(Clonal_Obs[[(q-1)*n.ht.per.sample+k]], subset = nFeature_RNA > nFeature_RNA_lower & nFeature_RNA < nFeature_RNA_upper & percent.mt < percent.mt_upper)
+            nFeature_RNA_upperQ=quantile(Clonal_Obs[[(q-1)*n.ht.per.sample+k]]@meta.data$nFeature_RNA,upperQ)
+            nFeature_RNA_lowerQ=quantile(Clonal_Obs[[(q-1)*n.ht.per.sample+k]]@meta.data$nFeature_RNA,lowerQ)
+            nCount_RNA_upperQ=quantile(Clonal_Obs[[(q-1)*n.ht.per.sample+k]]@meta.data$nCount_RNA,upperQ)
+            nCount_RNA_lowerQ=quantile(Clonal_Obs[[(q-1)*n.ht.per.sample+k]]@meta.data$nCount_RNA,lowerQ)
+            percent.mt_upperQ=quantile(Clonal_Obs[[(q-1)*n.ht.per.sample+k]]@meta.data$percent.mt,upperQ)
+            print(QCPlot(Clonal_Obs[[(q-1)*n.ht.per.sample+k]], nFeature_RNA_lower=nFeature_RNA_lowerQ,
+                         nFeature_RNA_upper=nFeature_RNA_upperQ,
+                         nCount_RNA_lower=nCount_RNA_lowerQ,
+                         nCount_RNA_upper=nCount_RNA_upperQ,
+                         percent.mt_upper=percent.mt_upperQ))
+            }
+          Clonal_Obs[[(q-1)*n.ht.per.sample+k]]<- subset(Clonal_Obs[[(q-1)*n.ht.per.sample+k]], nFeature_RNA > nFeature_RNA_lowerQ & nFeature_RNA < nFeature_RNA_upperQ & percent.mt < percent.mt_upperQ)
         }
       }
       rm(clonal.data)
@@ -370,18 +436,28 @@ CombineData <- function(
         Clonal_Obs[[k]] <- CreateSeuratObject(counts = clonal.data,project = sample.name[k])
         Clonal_Obs[[k]][["percent.mt"]] <- PercentageFeatureSet(Clonal_Obs[[k]], pattern = "^MT-")
         if(QC_plots){
-          nFeature_RNA_upper=quantile(Clonal_Obs[[(q-1)*n.ht.per.sample+k]]@meta.data$nFeature_RNA,.95)
-          nFeature_RNA_lower=quantile(Clonal_Obs[[(q-1)*n.ht.per.sample+k]]@meta.data$nFeature_RNA,.05)
-          nCount_RNA_upper=quantile(Clonal_Obs[[(q-1)*n.ht.per.sample+k]]@meta.data$nCount_RNA,.95)
-          nCount_RNA_lower=quantile(Clonal_Obs[[(q-1)*n.ht.per.sample+k]]@meta.data$nCount_RNA,.05)
-          percent.mt_upper=5
-          print(QCPlot(Clonal_Obs[[(q-1)*n.ht.per.sample+k]], nFeature_RNA_lower=nFeature_RNA_lower,
-                       nFeature_RNA_upper=nFeature_RNA_upper,
-                       nCount_RNA_lower=nCount_RNA_lower,
-                       nCount_RNA_upper=nCount_RNA_upper,
-                       percent.mt_upper=percent.mt_upper))
+          if(data.input=="raw"){
+          Clonal_Obs[[k]]<- subset(Clonal_Obs[[k]], nFeature_RNA > nFeature_RNA_lower & nFeature_RNA < nFeature_RNA_upper & percent.mt < percent.mt_upper)
           }
-        Clonal_Obs[[k]]<- subset(Clonal_Obs[[k]], subset = nFeature_RNA > nFeature_RNA_lower & nFeature_RNA < nFeature_RNA_upper & percent.mt < percent.mt_upper)
+          nFeature_RNA_upperQ=quantile(Clonal_Obs[[k]]@meta.data$nFeature_RNA,upperQ)
+          nFeature_RNA_lowerQ=quantile(Clonal_Obs[[k]]@meta.data$nFeature_RNA,lowerQ)
+          nCount_RNA_upperQ=quantile(Clonal_Obs[[k]]@meta.data$nCount_RNA,upperQ)
+          nCount_RNA_lowerQ=quantile(Clonal_Obs[[k]]@meta.data$nCount_RNA,lowerQ)
+          percent.mt_upperQ=quantile(Clonal_Obs[[k]]@meta.data$percent.mt,upperQ)
+          print(QCPlot(Clonal_Obs[[k]], nFeature_RNA_lower=nFeature_RNA_lowerQ,
+                       nFeature_RNA_upper=nFeature_RNA_upperQ,
+                       nCount_RNA_lower=nCount_RNA_lowerQ,
+                       nCount_RNA_upper=nCount_RNA_upperQ,
+                       percent.mt_upper=percent.mt_upperQ))
+          pdf(paste(gex.path[k],"/QC.pdf",sep=""),width=10,height=7)
+          print(QCPlot(Clonal_Obs[[k]], nFeature_RNA_lower=nFeature_RNA_lowerQ,
+                     nFeature_RNA_upper=nFeature_RNA_upperQ,
+                     nCount_RNA_lower=nCount_RNA_lowerQ,
+                     nCount_RNA_upper=nCount_RNA_upperQ,
+                     percent.mt_upper=percent.mt_upperQ))
+              dev.off()
+          }
+        Clonal_Obs[[k]]<- subset(Clonal_Obs[[k]], nFeature_RNA > nFeature_RNA_lowerQ & nFeature_RNA < nFeature_RNA_upperQ & percent.mt < percent.mt_upperQ)
         
       }
       rm(clonal.data)
@@ -456,102 +532,127 @@ CombineData <- function(
       Gene_indUMO=match(marker.gene,row.names(Clonal_Obs[[k]][["SCT"]]@data))
       Gene_indUMORNA=match(marker.gene,row.names(Clonal_Obs[[k]][['RNA']]@counts))
       
-      blist <- 1:length(Gene_indUMO)
+      number.marker.genes=length(marker.gene)
       
       if(k %in% index.control){
         mask=which(is.na(Gene_indUMO)==TRUE)
       }
-      alist_r=setdiff(blist,mask)
-      Gene_indUMOSCT=Gene_indUMO[alist_r]
-      Gene_indUMOCount=Gene_indUMORNA[mask]
+      
+      #Set genes not present to be first gene (this value isn't used)
+      Gene_indUMO[mask]=1
+   
+      ###################################################################################
+      ### Determine if all genes are in sctransform data                              ###
+      ###################################################################################
       if((k %in% index.control)&&(length(mask)>0)){
         for(s in 1:length(mask)){
           print(paste(paste("gene: ",marker.gene[mask[s]],sep=" ")," is not present in SCT",sep=""))
-          print("Continuing with remaining gois and replacing cutoff with count data...")
+          print(paste(paste("Continuing with remaining gois and replacing cutoff for gene: ",marker.gene[mask[s]],sep=""), " with count data...",sep="")
+          )
         }
       }
-      d1=as.matrix(Clonal_Obs[[k]][["SCT"]]@data)[Gene_indUMOSCT,]
-      alist <- 1:length(Gene_indUMOSCT)
+      ###################################################################################
+      ### Create matrices d1 & d2 which are the SCT & RNA values of the marker genes  ###
+      ###################################################################################
+      d1=as.matrix(Clonal_Obs[[k]][["SCT"]]@data)[Gene_indUMO,]
+      d2=as.matrix(Clonal_Obs[[k]][['RNA']]@counts)[Gene_indUMORNA,]
+      alist <- 1:number.marker.genes
       
+      ###################################################################################
+      ### Start with default threshold setting 1, that assumes inclusion of a control ###
+      ###################################################################################
       if((k %in% index.control)&&(preset==1)){
         if(length(alist)==1){
-          cutoff[[k]]=lapply(alist, function(alist) quantile(unname(d1),threshold.cutoff)[[1]])
-          
+          cutoff[[k]]=quantile(unname(d1),threshold.cutoff)[[1]]
         }
         else if(length(alist)>1){
+          myvec1=0
           if(length(mask)>0){
-            myvec1=lapply(alist, function(alist) quantile(unname(d1),threshold.cutoff)[[1]])
-            
-            d2=as.matrix(Clonal_Obs[[k]][['RNA']]@counts)[Gene_indUMOCount,]
-            alist_c <- 1:length(Gene_indUMOCount)
-            myvec2=lapply(alist_c, function(alist_c) quantile(unname(d2),threshold.cutoff)[[1]])
-            fillvec=rep(0,length(Gene_indUMO))
-            fillvec[alist_r]=myvec1
-            fillvec[mask]=myvec2
-            cutoff[[k]]=fillvec
+            for(j in 1:number.marker.genes){
+              if(j %in% mask){
+            myvec1=append(myvec1,quantile(unname(d2[j,]),threshold.cutoff)[[1]])
+              }
+              else{
+                myvec1=append(myvec1,quantile(unname(d1[j,]),threshold.cutoff)[[1]])
+              }
+            }
+            myvec1=myvec1[-1]
+            cutoff[[k]]=myvec1
           }
           else{
-            cutoff[[k]]=myvec1
+            cutoff[[k]]=lapply(alist, function(alist) quantile(unname(d1),threshold.cutoff)[[1]])
+            
           }}
       }else if(preset==0){
-        cutoff[[k]]=threshold.entry
+        ###################################################################################
+        ### Preset = 0 sets a global value to define high expression of a gene          ###
+        ###################################################################################
+        cutoff[[k]]=rep(threshold.entry,number.marker.genes)
       }else if(preset==2){
-        for(w in 1:n.samples){
-          if(w==1){
-            d1=as.matrix(Clonal_Obs[[k]][["SCT"]]@data)[Gene_indUMO,]
-          }else{
-            d1=cbind(d1,as.matrix(Clonal_Obs[[k]][["SCT"]]@data)[Gene_indUMO,])
+        ###################################################################################
+        ### Preset = 2 sets a threshold for each gene within each sample                ###
+        ###################################################################################
+        if(length(alist)==1){
+          cutoff[[k]]=quantile(unname(d1),threshold.cutoff)[[1]]
+        }
+        else if(length(alist)>1){
+          myvec1=0
+          if(length(mask)>0){
+            for(j in 1:number.marker.genes){
+              if(j %in% mask){
+                myvec1=append(myvec1,quantile(unname(d2[j,]),threshold.cutoff)[[1]])
+              }
+              else{
+                myvec1=append(myvec1,quantile(unname(d1[j,]),threshold.cutoff)[[1]])
+              }
+            }
+            myvec1=myvec1[-1]
+            cutoff[[k]]=myvec1
           }
-        }
-        for(w in 1:n.samples){
-          cutoff[[w]]=lapply(alist, function(alist) quantile(d1[alist,],threshold.cutoff)[[1]])
-        }
-      }else{
-        print(paste(paste("Sample: ",k,sep="")," not used for threshold"))
+          else{
+            cutoff[[k]]=lapply(alist, function(alist) quantile(unname(d1),threshold.cutoff)[[1]])
+            
+          }}
+        }else{
+        print(paste(paste("Sample: ",k,sep="")," not used to set the marker gene thresholds"))
       }
       
+      ###################################################################################
+      ### Create a threshold matrix that will be used for the marker gene metadata    ###
+      ###################################################################################
       Thresholds=matrix("unassigned",nrow=dim(Clonal_Obs[[k]])[2],ncol=length(Gene_indUMO))
       
-      if(mask>0){
-        
-        for(s in 1:length(Gene_indUMOSCT)){
-          
-          vec1=as.matrix(Clonal_Obs[[k]][["SCT"]]@data)[Gene_indUMOSCT[s],]
+      if(length(mask)>0){
+        for(s in 1:number.marker.genes){
+          if(s %in% mask){
+            vec1=as.matrix(Clonal_Obs[[k]][['RNA']]@counts)[Gene_indUMORNA[s],]
+            for(j in 1:dim(Clonal_Obs[[k]])[2]){
+              if(vec1[j]>cutoff[[c.index[k]]][s]){
+                Thresholds[j,s]="high"
+              }
+            }
+          }
+          else{
+          vec1=as.matrix(Clonal_Obs[[k]][["SCT"]]@data)[Gene_indUMO[s],]
           for(j in 1:dim(Clonal_Obs[[k]])[2]){
-            if(vec1[j]>cutoff[[c.index[k]]][alist_r[s]]){
+            if(vec1[j]>cutoff[[c.index[k]]][s]){
               
-              Thresholds[j,alist_r[s]]="high"
+              Thresholds[j,s]="high"
             }
           }
-          
-          
-          Clonal_Obs[[k]]=AddMetaData(Clonal_Obs[[k]], Thresholds[,alist_r[s]], col.name = paste("Threshold_",marker.gene[s],sep=""))
-        }
-        for(s in 1:length(Gene_indUMOCount)){
-          
-          vec1=as.matrix(Clonal_Obs[[k]][['RNA']]@counts)[Gene_indUMOCount[s],]
-          for(j in 1:dim(Clonal_Obs[[k]])[2]){
-            if(vec1[j]>cutoff[[c.index[k]]][mask[s]]){
-              Thresholds[j,mask[s]]="high"
-            }
           }
-          
-          
-          Clonal_Obs[[k]]=AddMetaData(Clonal_Obs[[k]], Thresholds[,mask[s]], col.name = paste("Threshold_",marker.gene[s],sep=""))
+          Clonal_Obs[[k]]=AddMetaData(Clonal_Obs[[k]], Thresholds[,s], col.name = paste("Threshold_",marker.gene[s],sep=""))
         }
       }
       else{
-        for(s in 1:length(Gene_indUMO)){
-          
-          vec1=Clonal_Obs[[k]][["SCT"]]@data[Gene_indUMO[s],]
+        for(s in 1:number.marker.genes){
+          vec1=unname(as.matrix(Clonal_Obs[[k]][["SCT"]]@data)[Gene_indUMO[s],])
           for(j in 1:dim(Clonal_Obs[[k]])[2]){
             if(vec1[j]>cutoff[[c.index[k]]][s]){
               Thresholds[j,s]="high"
             }
           }
-          
-          
-          Clonal_Obs[[k]]=AddMetaData(Clonal_Obs[[k]], Thresholds[,s], col.name = paste("Threshold_",marker.gene[s],sep=""))
+         Clonal_Obs[[k]]=AddMetaData(Clonal_Obs[[k]], Thresholds[,s], col.name = paste("Threshold_",marker.gene[s],sep=""))
         }
       }
       
@@ -717,17 +818,20 @@ for(k in 1:n.ht.per.sample){
 Clonal_Obs[[(q-1)*n.ht.per.sample+k]] = subset(hashtagdata[[q]],orig.ident %in% nameshashtags[(q-1)*n.ht.per.sample+k])
 Clonal_Obs[[(q-1)*n.ht.per.sample+k]][["percent.mt"]] <- PercentageFeatureSet(Clonal_Obs[[(q-1)*n.ht.per.sample+k]], pattern = "^MT-")
 if(QC_plots){
-  nFeature_RNA_upper=quantile(Clonal_Obs[[(q-1)*n.ht.per.sample+k]]@meta.data$nFeature_RNA,.95)
-  nFeature_RNA_lower=quantile(Clonal_Obs[[(q-1)*n.ht.per.sample+k]]@meta.data$nFeature_RNA,.05)
-  nCount_RNA_upper=quantile(Clonal_Obs[[(q-1)*n.ht.per.sample+k]]@meta.data$nCount_RNA,.95)
-  nCount_RNA_lower=quantile(Clonal_Obs[[(q-1)*n.ht.per.sample+k]]@meta.data$nCount_RNA,.05)
-  percent.mt_upper=5
-  print(QCPlot(Clonal_Obs[[(q-1)*n.ht.per.sample+k]], nFeature_RNA_lower=nFeature_RNA_lower,
-         nFeature_RNA_upper=nFeature_RNA_upper,
-         nCount_RNA_lower=nCount_RNA_lower,
-         nCount_RNA_upper=nCount_RNA_upper,
-         percent.mt_upper=percent.mt_upper))
+  if(data.input=="raw"){
+    Clonal_Obs[[k]]<- subset(Clonal_Obs[[k]], nFeature_RNA > nFeature_RNA_lower & nFeature_RNA < nFeature_RNA_upper & percent.mt < percent.mt_upper)
   }
+  nFeature_RNA_upperQ=quantile(Clonal_Obs[[(q-1)*n.ht.per.sample+k]]@meta.data$nFeature_RNA,upperQ)
+  nFeature_RNA_lowerQ=quantile(Clonal_Obs[[(q-1)*n.ht.per.sample+k]]@meta.data$nFeature_RNA,lowerQ)
+  nCount_RNA_upperQ=quantile(Clonal_Obs[[(q-1)*n.ht.per.sample+k]]@meta.data$nCount_RNA,upperQ)
+  nCount_RNA_lowerQ=quantile(Clonal_Obs[[(q-1)*n.ht.per.sample+k]]@meta.data$nCount_RNA,lowerQ)
+  percent.mt_upperQ=quantile(Clonal_Obs[[(q-1)*n.ht.per.sample+k]]@meta.data$percent.mt,upperQ)
+  print(QCPlot(Clonal_Obs[[(q-1)*n.ht.per.sample+k]], nFeature_RNA_lower=nFeature_RNA_lowerQ,
+               nFeature_RNA_upper=nFeature_RNA_upperQ,
+               nCount_RNA_lower=nCount_RNA_lowerQ,
+               nCount_RNA_upper=nCount_RNA_upperQ,
+               percent.mt_upper=percent.mt_upperQ))
+}
 Clonal_Obs[[(q-1)*n.ht.per.sample+k]]<- subset(Clonal_Obs[[(q-1)*n.ht.per.sample+k]], subset = nFeature_RNA > nFeature_RNA_lower & nFeature_RNA < nFeature_RNA_upper & percent.mt < percent.mt_upper)
 }
 }
@@ -740,16 +844,26 @@ rm(clonal.data)
   Clonal_Obs[[k]] <- CreateSeuratObject(counts = clonal.data,project = sample.name[k])
   Clonal_Obs[[k]][["percent.mt"]] <- PercentageFeatureSet(Clonal_Obs[[k]], pattern = "^MT-")
   if(QC_plots){
-    nFeature_RNA_upper=quantile(Clonal_Obs[[(q-1)*n.ht.per.sample+k]]@meta.data$nFeature_RNA,.95)
-    nFeature_RNA_lower=quantile(Clonal_Obs[[(q-1)*n.ht.per.sample+k]]@meta.data$nFeature_RNA,.05)
-    nCount_RNA_upper=quantile(Clonal_Obs[[(q-1)*n.ht.per.sample+k]]@meta.data$nCount_RNA,.95)
-    nCount_RNA_lower=quantile(Clonal_Obs[[(q-1)*n.ht.per.sample+k]]@meta.data$nCount_RNA,.05)
-    percent.mt_upper=5
-    print(QCPlot(Clonal_Obs[[(q-1)*n.ht.per.sample+k]], nFeature_RNA_lower=nFeature_RNA_lower,
-           nFeature_RNA_upper=nFeature_RNA_upper,
-           nCount_RNA_lower=nCount_RNA_lower,
-           nCount_RNA_upper=nCount_RNA_upper,
-           percent.mt_upper=percent.mt_upper))
+    if(data.input=="raw"){
+      Clonal_Obs[[k]]<- subset(Clonal_Obs[[k]], nFeature_RNA > nFeature_RNA_lower & nFeature_RNA < nFeature_RNA_upper & percent.mt < percent.mt_upper)
+    }
+    nFeature_RNA_upperQ=quantile(Clonal_Obs[[k]]@meta.data$nFeature_RNA,upperQ)
+    nFeature_RNA_lowerQ=quantile(Clonal_Obs[[k]]@meta.data$nFeature_RNA,lowerQ)
+    nCount_RNA_upperQ=quantile(Clonal_Obs[[k]]@meta.data$nCount_RNA,upperQ)
+    nCount_RNA_lowerQ=quantile(Clonal_Obs[[k]]@meta.data$nCount_RNA,lowerQ)
+    percent.mt_upperQ=quantile(Clonal_Obs[[k]]@meta.data$percent.mt,upperQ)
+    print(QCPlot(Clonal_Obs[[k]], nFeature_RNA_lower=nFeature_RNA_lowerQ,
+                 nFeature_RNA_upper=nFeature_RNA_upperQ,
+                 nCount_RNA_lower=nCount_RNA_lowerQ,
+                 nCount_RNA_upper=nCount_RNA_upperQ,
+                 percent.mt_upper=percent.mt_upperQ))
+    pdf(paste(gex.path[k],"/QC.pdf",sep=""),width=10,height=7)
+    print(QCPlot(Clonal_Obs[[k]], nFeature_RNA_lower=nFeature_RNA_lowerQ,
+                 nFeature_RNA_upper=nFeature_RNA_upperQ,
+                 nCount_RNA_lower=nCount_RNA_lowerQ,
+                 nCount_RNA_upper=nCount_RNA_upperQ,
+                 percent.mt_upper=percent.mt_upperQ))
+    dev.off()
   }
   Clonal_Obs[[k]]<- subset(Clonal_Obs[[k]], subset = nFeature_RNA > nFeature_RNA_lower & nFeature_RNA < nFeature_RNA_upper & percent.mt < percent.mt_upper)
 
@@ -823,107 +937,132 @@ rm(CD4cells)
 #plot(log10(mvsts.UMO[CD8_UMO,]),log10(mvsts.UMO[CD4_UMO,]),xlab="CD8",ylab="CD4",col=rgb(red=0, green = 0, blue = 0, alpha=0.5),pch=16,cex=1,xlim=c(0,4.5),ylim=c(0,4.5))
 print(paste(paste("Starting scTRansform for sample ",k,sep=""),"...",sep=""))
 Clonal_Obs[[k]] <- SCTransform(Clonal_Obs[[k]], vars.to.regress = "percent.mt", verbose = FALSE,variable.features.n = nvariable_features)
-Gene_indUMO=match(marker.gene,row.names(Clonal_Obs[[k]][["SCT"]]@data))
+Gene_indUMO=match(marker.gene,row.names(Clonal_Obs[[k]][["SCT"]]$data))
 Gene_indUMORNA=match(marker.gene,row.names(Clonal_Obs[[k]][['RNA']]$counts))
 
-blist <- 1:length(Gene_indUMO)
+number.marker.genes=length(marker.gene)
 
 if(k %in% index.control){
-mask=which(is.na(Gene_indUMO)==TRUE)
+  mask=which(is.na(Gene_indUMO)==TRUE)
 }
-alist_r=setdiff(blist,mask)
-Gene_indUMOSCT=Gene_indUMO[alist_r]
-Gene_indUMOCount=Gene_indUMORNA[mask]
+
+#Set genes not present to be first gene (this value isn't used)
+Gene_indUMO[mask]=1
+
+###################################################################################
+### Determine if all genes are in sctransform data                              ###
+###################################################################################
 if((k %in% index.control)&&(length(mask)>0)){
   for(s in 1:length(mask)){
     print(paste(paste("gene: ",marker.gene[mask[s]],sep=" ")," is not present in SCT",sep=""))
-          print("Continuing with remaining gois and replacing cutoff with count data...")
-          }
+    print(paste(paste("Continuing with remaining gois and replacing cutoff for gene: ",marker.gene[mask[s]],sep=""), " with count data...",sep="")
+    )
+  }
 }
-d1=as.matrix(Clonal_Obs[[k]][["SCT"]]@data)[Gene_indUMOSCT,]
-alist <- 1:length(Gene_indUMOSCT)
+###################################################################################
+### Create matrices d1 & d2 which are the SCT & RNA values of the marker genes  ###
+###################################################################################
+d1=as.matrix(Clonal_Obs[[k]][["SCT"]]$data)[Gene_indUMO,]
+d2=as.matrix(Clonal_Obs[[k]][['RNA']]$counts)[Gene_indUMORNA,]
+alist <- 1:number.marker.genes
 
+###################################################################################
+### Start with default threshold setting 1, that assumes inclusion of a control ###
+###################################################################################
 if((k %in% index.control)&&(preset==1)){
   if(length(alist)==1){
-    cutoff[[k]]=lapply(alist, function(alist) quantile(unname(d1),threshold.cutoff)[[1]])
-    
-    }
+    cutoff[[k]]=quantile(unname(d1),threshold.cutoff)[[1]]
+  }
   else if(length(alist)>1){
+    myvec1=0
     if(length(mask)>0){
-      myvec1=lapply(alist, function(alist) quantile(unname(d1),threshold.cutoff)[[1]])
-      
-      d2=as.matrix(Clonal_Obs[[k]][['RNA']]$counts)[Gene_indUMOCount,]
-      alist_c <- 1:length(Gene_indUMOCount)
-      myvec2=lapply(alist_c, function(alist_c) quantile(unname(d2),threshold.cutoff)[[1]])
-      fillvec=rep(0,length(Gene_indUMO))
-      fillvec[alist_r]=myvec1
-      fillvec[mask]=myvec2
-      cutoff[[k]]=fillvec
+      for(j in 1:number.marker.genes){
+        if(j %in% mask){
+          myvec1=append(myvec1,quantile(unname(d2[j,]),threshold.cutoff)[[1]])
+        }
+        else{
+          myvec1=append(myvec1,quantile(unname(d1[j,]),threshold.cutoff)[[1]])
+        }
+      }
+      myvec1=myvec1[-1]
+      cutoff[[k]]=myvec1
     }
     else{
-      cutoff[[k]]=myvec1
+      cutoff[[k]]=lapply(alist, function(alist) quantile(unname(d1),threshold.cutoff)[[1]])
+      
     }}
 }else if(preset==0){
-  cutoff[[k]]=threshold.entry
+  ###################################################################################
+  ### Preset = 0 sets a global value to define high expression of a gene          ###
+  ###################################################################################
+  cutoff[[k]]=rep(threshold.entry,number.marker.genes)
 }else if(preset==2){
-  for(w in 1:n.samples){
-    if(w==1){
-    d1=as.matrix(Clonal_Obs[[k]][["SCT"]]@data)[Gene_indUMO,]
-    }else{
-      d1=cbind(d1,as.matrix(Clonal_Obs[[k]][["SCT"]]@data)[Gene_indUMO,])
+  ###################################################################################
+  ### Preset = 2 sets a threshold for each gene within each sample                ###
+  ###################################################################################
+  if(length(alist)==1){
+    cutoff[[k]]=quantile(unname(d1),threshold.cutoff)[[1]]
+  }
+  else if(length(alist)>1){
+    myvec1=0
+    if(length(mask)>0){
+      for(j in 1:number.marker.genes){
+        if(j %in% mask){
+          myvec1=append(myvec1,quantile(unname(d2[j,]),threshold.cutoff)[[1]])
+        }
+        else{
+          myvec1=append(myvec1,quantile(unname(d1[j,]),threshold.cutoff)[[1]])
+        }
+      }
+      myvec1=myvec1[-1]
+      cutoff[[k]]=myvec1
     }
-  }
-  for(w in 1:n.samples){
-  cutoff[[w]]=lapply(alist, function(alist) quantile(d1[alist,],threshold.cutoff)[[1]])
-  }
-  }else{
-  print(paste(paste("Sample: ",k,sep="")," not used for threshold"))
+    else{
+      cutoff[[k]]=lapply(alist, function(alist) quantile(unname(d1),threshold.cutoff)[[1]])
+      
+    }}
+}else{
+  print(paste(paste("Sample: ",k,sep="")," not used to set the marker gene thresholds"))
 }
 
+###################################################################################
+### Create a threshold matrix that will be used for the marker gene metadata    ###
+###################################################################################
 Thresholds=matrix("unassigned",nrow=dim(Clonal_Obs[[k]])[2],ncol=length(Gene_indUMO))
 
-if(mask>0){
-  
-  for(s in 1:length(Gene_indUMOSCT)){
-    
-    vec1=as.matrix(Clonal_Obs[[k]][["SCT"]]@data)[Gene_indUMOSCT[s],]
-    for(j in 1:dim(Clonal_Obs[[k]])[2]){
-      if(vec1[j]>cutoff[[c.index[k]]][alist_r[s]]){
- 
-        Thresholds[j,alist_r[s]]="high"
+if(length(mask)>0){
+  for(s in 1:number.marker.genes){
+    if(s %in% mask){
+      vec1=as.matrix(Clonal_Obs[[k]][['RNA']]$counts)[Gene_indUMORNA[s],]
+      for(j in 1:dim(Clonal_Obs[[k]])[2]){
+        if(vec1[j]>cutoff[[c.index[k]]][s]){
+          Thresholds[j,s]="high"
+        }
       }
     }
-    
-    
-    Clonal_Obs[[k]]=AddMetaData(Clonal_Obs[[k]], Thresholds[,alist_r[s]], col.name = paste("Threshold_",marker.gene[s],sep=""))
-  }
-  for(s in 1:length(Gene_indUMOCount)){
-    
-    vec1=as.matrix(Clonal_Obs[[k]][['RNA']]$counts)[Gene_indUMOCount[s],]
-    for(j in 1:dim(Clonal_Obs[[k]])[2]){
-      if(vec1[j]>cutoff[[c.index[k]]][mask[s]]){
-        Thresholds[j,mask[s]]="high"
+    else{
+      vec1=as.matrix(Clonal_Obs[[k]][["SCT"]]$data)[Gene_indUMO[s],]
+      for(j in 1:dim(Clonal_Obs[[k]])[2]){
+        if(vec1[j]>cutoff[[c.index[k]]][s]){
+          
+          Thresholds[j,s]="high"
+        }
       }
     }
-    
-    
-    Clonal_Obs[[k]]=AddMetaData(Clonal_Obs[[k]], Thresholds[,mask[s]], col.name = paste("Threshold_",marker.gene[s],sep=""))
+    Clonal_Obs[[k]]=AddMetaData(Clonal_Obs[[k]], Thresholds[,s], col.name = paste("Threshold_",marker.gene[s],sep=""))
   }
 }
 else{
-for(s in 1:length(Gene_indUMO)){
-  
-  vec1=Clonal_Obs[[k]][["SCT"]]@data[Gene_indUMO[s],]
-for(j in 1:dim(Clonal_Obs[[k]])[2]){
-  if(vec1[j]>cutoff[[c.index[k]]][s]){
-    Thresholds[j,s]="high"
+  for(s in 1:number.marker.genes){
+    vec1=unname(as.matrix(Clonal_Obs[[k]][["SCT"]]$data)[Gene_indUMO[s],])
+    for(j in 1:dim(Clonal_Obs[[k]])[2]){
+      if(vec1[j]>cutoff[[c.index[k]]][s]){
+        Thresholds[j,s]="high"
+      }
+    }
+    Clonal_Obs[[k]]=AddMetaData(Clonal_Obs[[k]], Thresholds[,s], col.name = paste("Threshold_",marker.gene[s],sep=""))
   }
 }
-
-  
-  Clonal_Obs[[k]]=AddMetaData(Clonal_Obs[[k]], Thresholds[,s], col.name = paste("Threshold_",marker.gene[s],sep=""))
-}
-  }
 
 rm(mvsts.UMO)
 rm(RnaStoreUMO)

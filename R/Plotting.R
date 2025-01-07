@@ -1,9 +1,11 @@
+
 #%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 # Functions
 #%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 #' Functions to plot data stored in clonal objects
 #' at normalized counts greater than the control
 #' @import ggpubr
+#' @import circlize
 #'
 #' This function will read in Seurat objects processed by aocseq::CombineData
 #' and generate a ranked spreadsheet of clonotypes grouped by CDR3 beta sequence.
@@ -22,7 +24,7 @@
 #' @param ribbon.hue List. List of thresholds for each condition if preset is 0.
 #' @param path Path to outpt file.
 #' @return A data frame containing clonotypes and summary statistics of transcript expression.
-#' @concept Annotation
+#' @concept Visualization
 #' @export
 segmentPlot <- function(
     SummaryTable,
@@ -91,6 +93,40 @@ segmentPlot <- function(
                    facing = "bending.inside", niceFacing = TRUE, text.vjust = segment.names.spacer, cex = 1.3,col = NA)
 
   dev.off()
+  
+ 
+    percentages=c(SummaryTable[,s.one][s1_indx],SummaryTable[,s.two][s2_indx])
+    circos.clear()
+   
+    factors = 1:length(percentages)
+    par(mar = c(0.2, 0.2, 0.2, 0.2))
+   
+    circos.par(cell.padding = c(0, 0, 0, 0),gap.degree = tune.gap)
+    circos.initialize(factors, xlim = cbind(rep(0, length(percentages)), percentages))
+    circos.track(ylim = c(3, 4), track.height = 0.2, bg.border = NA)
+    circos.track(ylim = c(0, 2), track.height = 0.15,
+                 bg.col = c(rep(segment.col[1],length(s1_indx)),rep(segment.col[2],length(s2_indx))), bg.border = NA)
+    p_links1=idex_s1
+    p_links2=idex_s2+length(s1_indx)
+    for(i in 1:length(p_links1)){
+      circos.link(p_links1[i], c(0,percentages[p_links1[i]]), p_links2[i], c(0,percentages[p_links2[i]]),
+                  col = rand_color(1, transparency = 0.5,hue="pink",luminosity =c("bright","light")), border = NA)
+      
+    }
+    highlight.sector(1:1, track.index = 2, text.col=segment.col[1], text = paste(toString(signif((SummaryTable[,s.one][s1_indx[1]]),2)*100),"%"),
+                     facing = "clockwise", niceFacing = TRUE, text.vjust = percentage.spacer.1, cex = 1,col = NA)
+    highlight.sector(2:2, track.index = 2, text.col=segment.col[1], text = paste(toString(signif((SummaryTable[,s.one][s1_indx[2]]),2)*100),"%"),
+                     facing = "clockwise", niceFacing = TRUE, text.vjust = percentage.spacer.1, cex = 1,col = NA)
+    highlight.sector((length(s1_indx)+1):(length(s1_indx)+1), track.index = 2, text.col=segment.col[2], text = paste(toString(signif((SummaryTable[,s.two][s2_indx[1]]),2)*100),"%"),
+                     facing = "clockwise", niceFacing = TRUE, text.vjust = percentage.spacer.2, cex = 1,col = NA)
+    highlight.sector((length(s1_indx)+2):(length(s1_indx)+2), track.index = 2, text.col=segment.col[2], text = paste(toString(signif((SummaryTable[,s.two][s2_indx[2]]),2)*100),"%"),
+                     facing = "clockwise", niceFacing = TRUE, text.vjust = percentage.spacer.2, cex = 1,col = NA)
+    highlight.sector(1:length(s1_indx), track.index = 2, text.col=segment.col[1],text = segment.names[1],
+                     facing = "bending.inside", niceFacing = TRUE, text.vjust = segment.names.spacer, cex = 1.3,col = NA)
+    highlight.sector((length(s1_indx)):((length(s2_indx)+length(s1_indx))),text.col=segment.col[2], track.index = 2, text = segment.names[2],
+                     facing = "bending.inside", niceFacing = TRUE, text.vjust = segment.names.spacer, cex = 1.3,col = NA)
+    
+  
 
 }
 
@@ -112,7 +148,7 @@ segmentPlot <- function(
 #'
 #' @return return an assay containing predicted expression value in the data
 #' slot
-#' @concept integration
+#' @concept Visualization
 #' @export
 UMAPReduce <- function(
     Clonal_Obs,
@@ -223,7 +259,7 @@ UMAPReduce <- function(
 #'
 #' @return return an assay containing predicted expression value in the data
 #' slot
-#' @concept integration
+#' @concept Visualization
 #' @export
 QCPlot <- function(
     Clonal_Obs,
@@ -245,11 +281,21 @@ QCPlot <- function(
                                                   (Clonal_Obs@meta.data$nFeature_RNA<nFeature_RNA_lower)),"remove","use"),
                             ColSplitMito=ifelse(((Clonal_Obs@meta.data$percent.mt>percent.mt_upper)),"remove","use"))
   
+  positions=sample(length(Clonal_Obs@meta.data$nCount_RNA),5000)
+  combinedCounts_low=data.frame(nCount_RNA=Clonal_Obs@meta.data$nCount_RNA[positions],
+                            nFeature_RNA=Clonal_Obs@meta.data$nFeature_RNA[positions],
+                            percent.mt=Clonal_Obs@meta.data$percent.mt[positions],
+                            name=Clonal_Obs@meta.data$orig.ident[positions],
+                            ColSplitCount=ifelse(((Clonal_Obs@meta.data$nCount_RNA[positions]>nCount_RNA_upper)|
+                                                    (Clonal_Obs@meta.data$nCount_RNA[positions]<nCount_RNA_lower)),"remove","use"),
+                            ColSplitRNA=ifelse(((Clonal_Obs@meta.data$nFeature_RNA[positions]>nFeature_RNA_upper)|
+                                                  (Clonal_Obs@meta.data$nFeature_RNA[positions]<nFeature_RNA_lower)),"remove","use"),
+                            ColSplitMito=ifelse(((Clonal_Obs@meta.data$percent.mt[positions]>percent.mt_upper)),"remove","use"))
+  
   ##Plot the data frame
-  par(mfrow = c(3, 1))
   p1=ggplot() + 
     geom_violin(data=combinedCounts,aes(x=factor(name), y=nFeature_RNA ), alpha = 0.6, fill="gray")+
-    geom_point(data=combinedCounts,aes(x=factor(name), y=nFeature_RNA ,color=factor(ColSplitRNA)), alpha = 1 )+
+    geom_point(data=combinedCounts_low,aes(x=factor(name), y=nFeature_RNA ,color=factor(ColSplitRNA)), alpha = 1 )+
     geom_hline(yintercept=nFeature_RNA_upper)+
     geom_hline(yintercept=nFeature_RNA_lower)+
     ylab("Count per cell") +
@@ -267,8 +313,8 @@ QCPlot <- function(
   #print(p1)
   
   p2=ggplot() + 
-    geom_violin(data=combinedCounts,aes(x=factor(name), y=nCount_RNA ),fill="gray", alpha = 0.3 )+
-    geom_point(data=combinedCounts,aes(x=factor(name), y=nCount_RNA ,color=factor(ColSplitCount)), alpha = 1 )+
+    geom_violin(data=combinedCounts,aes(x=factor(name), y=nCount_RNA ),fill="gray", alpha = 0.6 )+
+    geom_point(data=combinedCounts_low,aes(x=factor(name), y=nCount_RNA ,color=factor(ColSplitCount)), alpha = 1 )+
     geom_hline(yintercept=nCount_RNA_upper)+
     geom_hline(yintercept=nCount_RNA_lower)+
     ylab("Count per cell") +
@@ -286,8 +332,8 @@ QCPlot <- function(
   #print(p2)
   
   p3=ggplot() + 
-    geom_violin(data=combinedCounts,aes(x=factor(name), y=percent.mt ), alpha = 0.6 )+
-    geom_point(data=combinedCounts,aes(x=factor(name), y=percent.mt ,color=factor(ColSplitMito)), alpha = 1 )+
+    geom_violin(data=combinedCounts,aes(x=factor(name), y=percent.mt ),fill="gray", alpha = 0.6 )+
+    geom_point(data=combinedCounts_low,aes(x=factor(name), y=percent.mt ,color=factor(ColSplitMito)), alpha = 1 )+
     geom_hline(yintercept=percent.mt_upper)+
     ylab("Count per cell") +
     xlab("Sample") +
@@ -301,11 +347,26 @@ QCPlot <- function(
           legend.position = "top",
           panel.background = element_blank())
   
-  print(ggpubr::ggarrange(p1,p2,p3,ncol=3), common.legend = TRUE, legend = "top")
+  ggpubr::ggarrange(p1,p2,p3,ncol=3)
   
 }
 
-
+#'
+#' This function will take a set of annotation spreadsheets and export differential
+#' expression between different cell types labelled by their marker genes
+#' Currently the phenotypic separation is CD4 and CD8, but the reader is encouraged
+#' to generate as many subsets as needed for downstream analysis
+#'
+#' @param Clonal_Obs A Seurat object pre-processed with aocseq::CombineData.
+#' @param clonotype.path Character array. Directory of an aocseq clonotype annotation table.
+#' @param save.dir Directory for storing differentially expressed genes.
+#' @param goi Character array. Gene name, a marker of interest.
+#' @param verbose Print progress
+#'
+#' @return return an assay containing predicted expression value in the data
+#' slot
+#' @concept Visualization
+#' @export
 SaveHeatmap <- function(
     Resting.cells,
     Act.ref,

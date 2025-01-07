@@ -12,7 +12,7 @@
 #' @param tcrseq List of TCRs to mark clonotypes included in the analysis.
 #' @param goi_v Gene of interest.
 #' @return A subset of a Seurat object processed with aocseq.
-#' @concept gene expression
+#' @concept Single cell analysis
 #' @export
 #'
 GetSpecificCells <- function(
@@ -80,17 +80,18 @@ GetSpecificCells <- function(
 #'
 #' @return return an assay containing predicted expression value in the data
 #' slot
-#' @concept integration
+#' @concept Single cell analysis
 #' @export
 GetGeneSignature <- function(
     Clonal_Obs,
     clonotype.path,
     save.dir,
     goi,
-    FClim=10^(-3),
+    FClim=0,
     specific.pval=10^(-5),
     bystander.pval=10^(-2),
-    logfc.threshold = 0.01){
+    set.min.pct=0.25,
+    logfc.threshold = 0){
 
   Classification=data.frame(read.csv(clonotype.path))
   #-----------------------------------------#
@@ -211,9 +212,9 @@ GetGeneSignature <- function(
 
 
     ##CD8 T cells
-    DEGmarkers <- FindMarkers(Clonal_Obs, ident.1 = c("CD8Specific_High"), ident.2 = c("CD8Bystander_Low"),min.pct = 0.0025,test.use ="bimod",min.cells.group=50,min.cells.feature=50,logfc.threshold = logfc.threshold)
+    DEGmarkers <- FindMarkers(Clonal_Obs, ident.1 = c("CD8Specific_High"), ident.2 = c("CD8Bystander_Low"),min.pct=set.min.pct,test.use ="bimod",logfc.threshold = logfc.threshold)
     SigDEG=data.frame(gene=row.names(DEGmarkers),FC=DEGmarkers$avg_log2FC,pval=DEGmarkers$p_val_adj)
-    SigDEG=subset(SigDEG, abs(FC)>FClim & pval<1)
+    SigDEG=subset(SigDEG, abs(FC)>FClim & pval<0.05)
     Snew_df2Up=subset(SigDEG,FC>FClim)
     SpecificGLUP=Snew_df2Up$gene[order(Snew_df2Up$FC,decreasing=TRUE)]
     Snew_df2Down=subset(SigDEG,FC<0)
@@ -237,7 +238,7 @@ GetGeneSignature <- function(
 
 
     ##CD4 T cells
-    DEGmarkers <- FindMarkers(Clonal_Obs, ident.1 = c("CD4Specific_High"), ident.2 = c("CD4Bystander_Low"),min.pct = 0,test.use ="bimod",logfc.threshold = logfc.threshold)
+    DEGmarkers <- FindMarkers(Clonal_Obs, ident.1 = c("CD4Specific_High"), ident.2 = c("CD4Bystander_Low"),min.pct=set.min.pct,test.use ="bimod",logfc.threshold = logfc.threshold)
     SigDEG=data.frame(gene=row.names(DEGmarkers),FC=DEGmarkers$avg_log2FC,pval=DEGmarkers$p_val_adj)
     SigDEG=subset(SigDEG, abs(FC)>FClim & pval<0.05)
     Snew_df2Up=subset(SigDEG,FC>FClim)

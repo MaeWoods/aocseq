@@ -7,85 +7,103 @@
 #' This function returns a matrix of normalized gene expression along the rows and cells
 #' along the columns.
 #'
-#' @param Perturbation List of Seurat objects. Seurat objects containing expression data processed.
+#' @param cell.data List of Seurat objects. Seurat objects containing expression data processed.
 #' by aocseq that will be used to score query T cell response.
-#' @param path.glist path to the gene list of the gene signature.
-#' @param TCR.list Character list. List of TCRs for clonotypes to include in the reference data.
-#' @param sample.return Index of samples from the perturebation list that should be returned in the matrix.
-#' @param n.inlist Number of genes from the gene signature that must have high expression for the cell to be included in the reference.
+#' @param gene.list List of genes to be included in the reference matrix.
+#' @param cell.type.list Character list. List of cell types to include in the reference data.
+#' @param celltype Cell type to access metadata of reference dataset.
+#' @param n.inlist Number of genes with high expression in each cell included in the reference matrix.
+#' @param cellcycle Adds Seurat cell cycle phase to reference data.
+#' @param SCT Returns reference matrix in sctransform space.
 #' @param verbose Print progress bars and output.
 #' @return A reference matrix.
-#' @concept annotation.
+#' @concept Single cell analysis
 #' @export
 MakeReference <- function(
-    Perturbation,
-    path.glist,
-    TCR.list,
-    sample.return=3,
+    cell.data,
+    gene.list,
+    cell.type.list,
+    celltype=cdr3_na,
+    threshold=0.975,
     n.inlist=10,
+    cellcycle=FALSE,
+    SCT=FALSE,
     verbose=TRUE
 ){
-
-  n.samples=length(Perturbation)
-
+  
+  n.samples=length(cell.data)
+  if(cellcycle){
   s.genes <- cc.genes$s.genes
   g2m.genes <- cc.genes$g2m.genes
   for(k in 1:n.samples){
-  Perturbation[[k]] <- CellCycleScoring(Perturbation[[k]], s.features = s.genes, g2m.features = g2m.genes, set.ident = TRUE)
+    cell.data[[k]] <- CellCycleScoring(cell.data[[k]], s.features = s.genes, g2m.features = g2m.genes, set.ident = TRUE)
+  }
   }
   Sig = vector(mode = "list", length = n.samples)
-  Perturbation.norm = vector(mode = "list", length = n.samples)
-#All tetramer sorted clonotypes
+  SigSCT = vector(mode = "list", length = n.samples)
+  cell.data.norm = vector(mode = "list", length = n.samples)
 
-for(g in 1:n.samples){
-  Perturbation.norm[[g]]=Perturbation[[g]]
-  Perturbation.norm[[g]]=as.matrix(Perturbation[[g]]@assays$RNA@counts)
-  Perturbation.norm[[g]]=log(1+(Perturbation.norm[[g]]/mean(colSums(Perturbation.norm[[g]]))))
-  Perturbation.norm[[g]]=Perturbation.norm[[g]]/mean(colSums(Perturbation.norm[[g]]))
-}
-for(g in 1:n.samples){
-Glist=setdiff(read.csv(path.glist)$x,"")[1:25]
-cutoff=rep(0,length(Glist))
-GlistIndS=match(Glist,row.names(Perturbation.norm[[g]]))
-
-for(g in 1:25){
-  cutoff[g]=quantile(Perturbation.norm[[g]][GlistIndS[g],],.915)
-}
-
-Thresholds=matrix("unassigned",nrow=dim(Perturbation[[g]])[2],ncol=length(GlistIndS))
-for(s in 1:length(GlistIndS)){
-  vec1=Perturbation1[GlistIndS[s],]
-  for(j in 1:dim(Perturbation[[g]])[2]){
-    if(vec1[j]>cutoff[s]){
-      Thresholds[j,s]="high"
+  for(g in 1:n.samples){
+    cell.data.norm[[g]]=as.matrix(cell.data[[g]]@assays$RNA@counts)
+    cell.data.norm[[g]]=log(1+(cell.data.norm[[g]]/mean(colSums(cell.data.norm[[g]]))))
+    cell.data.norm[[g]]=cell.data.norm[[g]]/mean(colSums(cell.data.norm[[g]]))
+  }
+  for(g in 1:n.samples){
+    numG=length(gene.list)
+    cutoff=rep(0,length(gene.list))
+    gene.listIndS=match(gene.list,row.names(cell.data.norm[[g]]))
+    
+    for(s in 1:numG){
+      cutoff[s]=quantile(cell.data.norm[[g]][gene.listIndS[s],],threshold)
+      if(cutoff[s]==0){
+        print(paste(paste("Gene: ",row.names(cell.data.norm[[g]][gene.listIndS[s],]),sep="")," contains zero counts. Matrix construction failed. Choose a different gene with more counts",sep="")
+        )
+      }
+    }
+    
+    Thresholds=matrix("unassigned",nrow=dim(cell.data[[g]])[2],ncol=length(gene.listIndS))
+    for(s in 1:length(gene.listIndS)){
+      vec1=cell.data.norm[[g]][gene.listIndS[s],]
+      for(j in 1:dim(cell.data[[g]])[2]){
+        if(vec1[j]>=cutoff[s]){
+          Thresholds[j,s]="high"
+        }
+      }
+      cell.data[[g]]=AddMetaData(cell.data[[g]], Thresholds[,s], col.name = paste("Signature_",gene.list[s],sep=""))
+    }
+    
+    gene_meta=match(paste("Signature_",gene.list[1],sep=""), names(Clonal_Obs[[q*n.batch + k]]@meta.data))
+    MatrixOfValues=as.matrix(cell.data[[g]]@meta.data[gene_meta:(gene_meta+(numG-1))])
+    NcellsSigmat=dim(MatrixOfValues)[[1]]
+    SignatureCell=rep(0,NcellsSigmat)
+    ReferenceCells=0
+    for(h in 1:NcellsSigmat){
+      if(length(subset(MatrixOfValues[h,],MatrixOfValues[h,]=="high"))>n.inlist){
+        SignatureCell[h]=1
+        ReferenceCells=1
+      }
+    }
+    if(ReferenceCells==0){
+      print(paste("No reference cells in the matrix. Matrix construction failed, choose a high value for n.inlist. Value is currently: ",n.inlist,sep=""))
+    }
+    
+    cell.data[[g]]=AddMetaData(cell.data[[g]], SignatureCell, col.name = "SignatureCell")
+    signature.ref <- subset(cell.data[[g]],(celltype %in% cell.type.list) & (SignatureCell==1))
+    colnamesSig2=colnames(signature.ref)
+    gene.listMat2=match(gene.list,row.names(cell.data.norm[[g]]))
+    Sig[[g]]=cell.data.norm[[g]][gene.listMat2,colnamesSig2]
+    if(SCT){
+      SigSCT[[g]]=cell.data[[g]]@assays$RNA@data[gene.listMat2,colnamesSig2]
     }
   }
-  Perturbation[[g]]=AddMetaData(Perturbation[[g]], Thresholds[,s], col.name = paste("Signature_",Glist[s],sep=""))
-}
-
-MatrixOfValues=as.matrix(Perturbation[[g]]@meta.data[19:43])
-NcellsSigmat=dim(MatrixOfValues)[[1]]
-SignatureCell=rep(0,NcellsSigmat)
-for(h in 1:NcellsSigmat){
-  if(length(subset(MatrixOfValues[h,],MatrixOfValues[h,]=="high"))>n.inlist){
-    SignatureCell[h]=1
+  
+  if(SCT){
+  ref.matrixSCT=SigSCT[[1:n.samples]]
+    return(ref.matrixSCT)
   }
-}
-
-Perturbation[[g]]=AddMetaData(Perturbation[[g]], SignatureCell, col.name = "SignatureCell")
-signature.ref <- subset(Perturbation[[g]],(cdr3_na %in% TCR.list) & (SignatureCell==1)
-                         & Signature_CCL4L2=="high"  & Signature_IFNG=="high")
-
-colnamesSig2=colnames(signature.ref)
-GlistMat2=match(Glist,row.names(Perturbation.norm[[g]]))
-Sig[[g]]=Perturbation1[GlistMat2,colnamesSig2]
-}
-
-##Uses 1 and 3 for whole and RAD subsets for the TA - specific TCRs
-Sigall_T=Sig[[sample.return]]
-
-dim(Sigall_T)
-
-return(Sigall_T)
+  else{
+    ref.matrix=Sig[[1:n.samples]]
+  return(ref.matrix)
+  }
 }
 
