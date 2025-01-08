@@ -72,7 +72,7 @@ MakeReference <- function(
       cell.data[[g]]=AddMetaData(cell.data[[g]], Thresholds[,s], col.name = paste("Signature_",gene.list[s],sep=""))
     }
     
-    gene_meta=match(paste("Signature_",gene.list[1],sep=""), names(Clonal_Obs[[q*n.batch + k]]@meta.data))
+    gene_meta=match(paste("Signature_",gene.list[1],sep=""), names(cell.data[[g]]@meta.data))
     MatrixOfValues=as.matrix(cell.data[[g]]@meta.data[gene_meta:(gene_meta+(numG-1))])
     NcellsSigmat=dim(MatrixOfValues)[[1]]
     SignatureCell=rep(0,NcellsSigmat)

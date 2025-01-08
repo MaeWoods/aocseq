@@ -83,7 +83,7 @@ ClassifyCells <- function(
   covinpt=rep(0,Ngenes*Ngenes)
   sigtest=rep(0,Ngenes*(Ncells+1))
 
-  SQ=GetMahalanobis(Nsig, Ncells, Ngenes, as.double(sigvec), as.double(TestCells),as.double(dist),as.double(meansinp),as.double(colsv),as.double(covinpt),as.double(sigtest))
+  SQ=GetMahalanobis(Nsig, Ncells, Ngenes, as.double(sigvec), as.double(TestCells),as.double(dist),as.double(meansinp),as.double(colsv),as.double(covinpt),as.double(covinpt),as.double(covinpt),as.double(covinpt),as.double(sigtest))
   distarrayctrl=array( unlist( SQ ))
   if(withSCT){
     if(scramble){
