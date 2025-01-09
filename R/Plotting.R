@@ -246,10 +246,9 @@ UMAPReduce <- function(
 
 #' QC plot
 #'
-#' This function will take a set of annotation spreadsheets and export differential
-#' expression between different cell types labelled by their marker genes
-#' Currently the phenotypic separation is CD4 and CD8, but the reader is encouraged
-#' to generate as many subsets as needed for downstream analysis
+#' This function will import raw feature core matrix and plot the number of gene detected 
+#' per cell at the number of reads detected per cell and the percent of mitochondrial genes 
+#' per cell and display QC thresholds
 #'
 #' @param Clonal_Obs A Seurat object pre-processed with aocseq::CombineData.
 #' @param clonotype.path Character array. Directory of an aocseq clonotype annotation table.
