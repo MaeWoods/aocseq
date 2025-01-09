@@ -6,7 +6,7 @@
 #' This function will read in Seurat objects processed by traceseq::AnnotateClonotypes
 #' or any other software based on cell annotation and subset the SEURAT array accordingly
 #'
-#' @param Clonal_Obs A Seurat object.
+#' @param cell.data A Seurat object.
 #' @param expression Choice of "high" or "unassigned".
 #' @param phenotype CD4 or CD8 clasification.
 #' @param tcrseq List of TCRs to mark clonotypes included in the analysis.
@@ -16,18 +16,18 @@
 #' @export
 #'
 GetSpecificCells <- function(
-    Clonal_Obs,
+    cell.data,
     expression,
     phenotype,
     tcrseq,
     goi_v
 ){
   if(phenotype=="CD8"){
-    pindx=match("CD8cells",names(subset(Clonal_Obs,(`cdr3_na` %in% tcrseq))@meta.data))
-    entry=match(paste("Threshold_",goi_v,sep=""),names(subset(Clonal_Obs,(`cdr3_na` %in% tcrseq))@meta.data))
-    if(length(subset(subset(Clonal_Obs,(`cdr3_na` %in% tcrseq))@meta.data[[pindx]],subset(Clonal_Obs,(`cdr3_na` %in% tcrseq))@meta.data[[pindx]]=="1"))>0){
-      if(length(subset(subset(Clonal_Obs,(`cdr3_na` %in% tcrseq) & Clonal_Obs@meta.data[[pindx]]=="1")@meta.data[[entry]],subset(Clonal_Obs,(`cdr3_na` %in% tcrseq) & Clonal_Obs@meta.data[[pindx]]=="1")@meta.data[[entry]]==expression))>0){
-        return(subset(Clonal_Obs,(Clonal_Obs@meta.data[[entry]]==(expression)) & Clonal_Obs@meta.data[[pindx]]=="1" & (`cdr3_na` %in% tcrseq)))
+    pindx=match("CD8cells",names(subset(cell.data,(`cdr3_na` %in% tcrseq))@meta.data))
+    entry=match(paste("Threshold_",goi_v,sep=""),names(subset(cell.data,(`cdr3_na` %in% tcrseq))@meta.data))
+    if(length(subset(subset(cell.data,(`cdr3_na` %in% tcrseq))@meta.data[[pindx]],subset(cell.data,(`cdr3_na` %in% tcrseq))@meta.data[[pindx]]=="1"))>0){
+      if(length(subset(subset(cell.data,(`cdr3_na` %in% tcrseq) & cell.data@meta.data[[pindx]]=="1")@meta.data[[entry]],subset(cell.data,(`cdr3_na` %in% tcrseq) & cell.data@meta.data[[pindx]]=="1")@meta.data[[entry]]==expression))>0){
+        return(subset(cell.data,(cell.data@meta.data[[entry]]==(expression)) & cell.data@meta.data[[pindx]]=="1" & (`cdr3_na` %in% tcrseq)))
       }
       else{
         return(0)
@@ -38,11 +38,11 @@ GetSpecificCells <- function(
     }
   }
   else if(phenotype=="CD4"){
-    pindx=match("CD4cells",names(subset(Clonal_Obs,(`cdr3_na` %in% tcrseq))@meta.data))
-    entry=match(paste("Threshold_",goi_v,sep=""),names(subset(Clonal_Obs,(`cdr3_na` %in% tcrseq))@meta.data))
-    if(length(subset(subset(Clonal_Obs,(`cdr3_na` %in% tcrseq))@meta.data[[pindx]],subset(Clonal_Obs,(`cdr3_na` %in% tcrseq))@meta.data[[pindx]]=="1"))>0){
-      if(length(subset(subset(Clonal_Obs,(`cdr3_na` %in% tcrseq) & Clonal_Obs@meta.data[[pindx]]=="1")@meta.data[[entry]],subset(Clonal_Obs,(`cdr3_na` %in% tcrseq) & Clonal_Obs@meta.data[[pindx]]=="1")@meta.data[[entry]]==expression))>0){
-        return(subset(Clonal_Obs,Clonal_Obs@meta.data[[entry]]==expression & Clonal_Obs@meta.data[[pindx]]=="1" & (`cdr3_na` %in% tcrseq)))
+    pindx=match("CD4cells",names(subset(cell.data,(`cdr3_na` %in% tcrseq))@meta.data))
+    entry=match(paste("Threshold_",goi_v,sep=""),names(subset(cell.data,(`cdr3_na` %in% tcrseq))@meta.data))
+    if(length(subset(subset(cell.data,(`cdr3_na` %in% tcrseq))@meta.data[[pindx]],subset(cell.data,(`cdr3_na` %in% tcrseq))@meta.data[[pindx]]=="1"))>0){
+      if(length(subset(subset(cell.data,(`cdr3_na` %in% tcrseq) & cell.data@meta.data[[pindx]]=="1")@meta.data[[entry]],subset(cell.data,(`cdr3_na` %in% tcrseq) & cell.data@meta.data[[pindx]]=="1")@meta.data[[entry]]==expression))>0){
+        return(subset(cell.data,cell.data@meta.data[[entry]]==expression & cell.data@meta.data[[pindx]]=="1" & (`cdr3_na` %in% tcrseq)))
       }
       else{
         return(0)
@@ -53,10 +53,10 @@ GetSpecificCells <- function(
     }
   }
   else{
-    entry=match(paste("Threshold_",goi_v,sep=""),names(subset(Clonal_Obs,(`cdr3_na` %in% tcrseq))@meta.data))
-    if(length(subset(subset(Clonal_Obs,(`cdr3_na` %in% tcrseq))@meta.data[[entry]],subset(Clonal_Obs,(`cdr3_na` %in% tcrseq))@meta.data[[entry]]==expression))>0){
+    entry=match(paste("Threshold_",goi_v,sep=""),names(subset(cell.data,(`cdr3_na` %in% tcrseq))@meta.data))
+    if(length(subset(subset(cell.data,(`cdr3_na` %in% tcrseq))@meta.data[[entry]],subset(cell.data,(`cdr3_na` %in% tcrseq))@meta.data[[entry]]==expression))>0){
 
-      return(subset(Clonal_Obs,Clonal_Obs@meta.data[[entry]]==expression & (`cdr3_na` %in% tcrseq)))
+      return(subset(cell.data,cell.data@meta.data[[entry]]==expression & (`cdr3_na` %in% tcrseq)))
     }
     else{
       return(0)
@@ -72,7 +72,7 @@ GetSpecificCells <- function(
 #' Currently the phenotypic separation is CD4 and CD8, but the reader is encouraged
 #' to generate as many subsets as needed for downstream analysis
 #'
-#' @param Clonal_Obs A Seurat object pre-processed with aocseq::CombineData.
+#' @param cell.data A Seurat object pre-processed with aocseq::CombineData.
 #' @param clonotype.path Character array. Directory of an aocseq clonotype annotation table.
 #' @param save.dir Directory for storing differentially expressed genes.
 #' @param goi Character array. Gene name, a marker of interest.
@@ -83,7 +83,7 @@ GetSpecificCells <- function(
 #' @concept Single cell analysis
 #' @export
 GetGeneSignature <- function(
-    Clonal_Obs,
+    cell.data,
     clonotype.path,
     save.dir,
     goi,
@@ -97,13 +97,13 @@ GetGeneSignature <- function(
   #-----------------------------------------#
   #-----Find specific TCRs based on goi-----#
   #-----------------------------------------#
-  if(is.na(match(paste(levels(factor(Clonal_Obs@meta.data$orig.ident)),".abundance",sep=""),names(Classification)))==TRUE)
+  if(is.na(match(paste(levels(factor(cell.data@meta.data$orig.ident)),".abundance",sep=""),names(Classification)))==TRUE)
     stop("No matching column data in clonotype annotation table... To fix: Rerun GetGeneSignature using a Clonal Object with a matching orig.ident in the aocseq annotation table");gc();
 
-  entry_idx=match(paste(levels(factor(Clonal_Obs@meta.data$orig.ident)),".abundance",sep=""),names(Classification))
+  entry_idx=match(paste(levels(factor(cell.data@meta.data$orig.ident)),".abundance",sep=""),names(Classification))
   pheno_idx=match("phenotype",names(Classification))
-  e_i=paste(levels(factor(Clonal_Obs@meta.data$orig.ident)),".abundance",sep="")
-  e_i_s=paste(levels(factor(Clonal_Obs@meta.data$orig.ident)),".status",sep="")
+  e_i=paste(levels(factor(cell.data@meta.data$orig.ident)),".abundance",sep="")
+  e_i_s=paste(levels(factor(cell.data@meta.data$orig.ident)),".status",sep="")
   e_i_s_t=match(e_i_s,names(Classification))
   s=2
   idxs=s
@@ -175,7 +175,7 @@ GetGeneSignature <- function(
 
     #list(union(CD8_Bys_1[[1]],CD8_Bys_2[[1]]))
 
-  unassignedTCRs = setdiff(levels(factor(Clonal_Obs@meta.data$cdr3_na)),c(CD4_Act[[1]],
+  unassignedTCRs = setdiff(levels(factor(cell.data@meta.data$cdr3_na)),c(CD4_Act[[1]],
           CD4_Bys[[1]],CD8_Act[[1]],CD8_Bys[[1]]))
 
   #----------------------------#
@@ -184,35 +184,35 @@ GetGeneSignature <- function(
   if(as.character(CD8_Act)[[1]]=="character(0)"){
   }else{
     
-    CD8_HighCells=GetSpecificCells(Clonal_Obs,"high","CD8",CD8_Act[[1]],goi)
+    CD8_HighCells=GetSpecificCells(cell.data,"high","CD8",CD8_Act[[1]],goi)
     print(CD8_Act[[1]])
-    CD8_LowBystanderCells=GetSpecificCells(Clonal_Obs,"unassigned","CD8",CD8_Bys[[1]],goi)
-    CD8_HighViralCells=GetSpecificCells(Clonal_Obs,"high","CD8",unassignedTCRs,goi)
-    CD8_LowViralCells=GetSpecificCells(subset(Clonal_Obs,CD8cells=="1"),"unassigned","CD8",setdiff(unassignedTCRs,"unassigned"),goi)
+    CD8_LowBystanderCells=GetSpecificCells(cell.data,"unassigned","CD8",CD8_Bys[[1]],goi)
+    CD8_HighViralCells=GetSpecificCells(cell.data,"high","CD8",unassignedTCRs,goi)
+    CD8_LowViralCells=GetSpecificCells(subset(cell.data,CD8cells=="1"),"unassigned","CD8",setdiff(unassignedTCRs,"unassigned"),goi)
   }
 
   if(as.character(CD4_Act)[[1]]=="character(0)"){
     }else{
-    CD4_HighCells=GetSpecificCells(Clonal_Obs,"high","CD4",CD4_Act[[1]],goi)
+    CD4_HighCells=GetSpecificCells(cell.data,"high","CD4",CD4_Act[[1]],goi)
     #print(CD4_Bys)
-    CD4_LowBystanderCells=GetSpecificCells(Clonal_Obs,"unassigned","CD4",CD4_Bys,goi)
-    CD4_HighViralCells=GetSpecificCells(Clonal_Obs,"high","CD4",unassignedTCRs,goi)
-    CD4_LowViralCells=GetSpecificCells(Clonal_Obs,"unassigned","CD4",unassignedTCRs,goi)
+    CD4_LowBystanderCells=GetSpecificCells(cell.data,"unassigned","CD4",CD4_Bys,goi)
+    CD4_HighViralCells=GetSpecificCells(cell.data,"high","CD4",unassignedTCRs,goi)
+    CD4_LowViralCells=GetSpecificCells(cell.data,"unassigned","CD4",unassignedTCRs,goi)
     }
   if(as.character(CD8_Act)[[1]]=="character(0)"){
   }else{
-    Arrangemeta=data.frame(bc=colnames(Clonal_Obs),Idx=1:length(colnames(Clonal_Obs)),Viralgroup=rep(1,length(colnames(Clonal_Obs))))
+    Arrangemeta=data.frame(bc=colnames(cell.data),Idx=1:length(colnames(cell.data)),Viralgroup=rep(1,length(colnames(cell.data))))
     Arrangemeta$Viralgroup[subset(Arrangemeta,bc %in% colnames(CD8_HighCells))$Idx] = "CD8Specific_High"
     Arrangemeta$Viralgroup[subset(Arrangemeta,bc %in% colnames(CD8_LowBystanderCells))$Idx] = "CD8Bystander_Low"
     Arrangemeta$Viralgroup[subset(Arrangemeta,bc %in% colnames(CD8_HighViralCells))$Idx] = "CD8Unspecified_High"
     Arrangemeta$Viralgroup[subset(Arrangemeta,bc %in% colnames(CD8_LowViralCells))$Idx] = "CD8Unspecified_Low"
 
-    Clonal_Obs=AddMetaData(Clonal_Obs, Arrangemeta$Viralgroup, col.name = 'SpecificityGroup')
-    Idents(Clonal_Obs = Clonal_Obs) <- Clonal_Obs@meta.data$SpecificityGroup
+    cell.data=AddMetaData(cell.data, Arrangemeta$Viralgroup, col.name = 'SpecificityGroup')
+    Idents(cell.data = cell.data) <- cell.data@meta.data$SpecificityGroup
 
 
     ##CD8 T cells
-    DEGmarkers <- FindMarkers(Clonal_Obs, ident.1 = c("CD8Specific_High"), ident.2 = c("CD8Bystander_Low"),min.pct=set.min.pct,test.use ="bimod",logfc.threshold = logfc.threshold)
+    DEGmarkers <- FindMarkers(cell.data, ident.1 = c("CD8Specific_High"), ident.2 = c("CD8Bystander_Low"),min.pct=set.min.pct,test.use ="bimod",logfc.threshold = logfc.threshold)
     SigDEG=data.frame(gene=row.names(DEGmarkers),FC=DEGmarkers$avg_log2FC,pval=DEGmarkers$p_val_adj)
     SigDEG=subset(SigDEG, abs(FC)>FClim & pval<0.05)
     Snew_df2Up=subset(SigDEG,FC>FClim)
@@ -227,18 +227,18 @@ GetGeneSignature <- function(
 }
     if(as.character(CD4_Act)[[1]]=="character(0)"){
     }else{
-    Arrangemeta=data.frame(bc=colnames(Clonal_Obs),Idx=1:length(colnames(Clonal_Obs)),Viralgroup=rep(1,length(colnames(Clonal_Obs))))
+    Arrangemeta=data.frame(bc=colnames(cell.data),Idx=1:length(colnames(cell.data)),Viralgroup=rep(1,length(colnames(cell.data))))
     Arrangemeta$Viralgroup[subset(Arrangemeta,bc %in% colnames(CD4_HighCells))$Idx] = "CD4Specific_High"
     Arrangemeta$Viralgroup[subset(Arrangemeta,bc %in% colnames(CD4_LowBystanderCells))$Idx] = "CD4Bystander_Low"
    # Arrangemeta$Viralgroup[subset(Arrangemeta,bc %in% colnames(CD4_HighViralCells))$Idx] = "CD4Unspecified_High"
    # Arrangemeta$Viralgroup[subset(Arrangemeta,bc %in% colnames(CD4_LowViralCells))$Idx] = "CD4Unspecified_Low"
 
-    Clonal_Obs=AddMetaData(Clonal_Obs, Arrangemeta$Viralgroup, col.name = 'SpecificityGroup')
-    Idents(Clonal_Obs = Clonal_Obs) <- Clonal_Obs@meta.data$SpecificityGroup
+    cell.data=AddMetaData(cell.data, Arrangemeta$Viralgroup, col.name = 'SpecificityGroup')
+    Idents(cell.data = cell.data) <- cell.data@meta.data$SpecificityGroup
 
 
     ##CD4 T cells
-    DEGmarkers <- FindMarkers(Clonal_Obs, ident.1 = c("CD4Specific_High"), ident.2 = c("CD4Bystander_Low"),min.pct=set.min.pct,test.use ="bimod",logfc.threshold = logfc.threshold)
+    DEGmarkers <- FindMarkers(cell.data, ident.1 = c("CD4Specific_High"), ident.2 = c("CD4Bystander_Low"),min.pct=set.min.pct,test.use ="bimod",logfc.threshold = logfc.threshold)
     SigDEG=data.frame(gene=row.names(DEGmarkers),FC=DEGmarkers$avg_log2FC,pval=DEGmarkers$p_val_adj)
     SigDEG=subset(SigDEG, abs(FC)>FClim & pval<0.05)
     Snew_df2Up=subset(SigDEG,FC>FClim)

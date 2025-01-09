@@ -798,26 +798,28 @@ Iso_forest<-function(data, num_trees, max_height, subsample_count=nrow(data),kur
 #' Combine single cell data and annotate with cell labels based on functionality
 #'
 #' This function will read in Seurat objects that have been processed with aocseq,
-#' and accompanying annotation tables to classify clonotypes using distance scores.
+#' and accompanying annotation tables to classify annotation.tab using distance scores.
 #' Takes as input gene expression from scRNAseq and VDJ enrichment. Outputs a classification table
-#' that lists samples and each clonotype classified.
+#' that lists samples and each clonotype or cell type and the classification.
 #'
-#' @param Clonal_Obs A seurat object. Pre-processed with aocseq.
-#' @param Clonotypes Table. An annotation table from the aocseq package.
-#' @param method Vector of "ZINB", "Mahalanobis", "z-score" and "Taxi cab". "ZINB" can be used without a reference dataset.
+#' @param cell.data A seurat object. Pre-processed with aocseq.
+#' @param annotation.tab Table. An annotation table from the aocseq package.
+#' @param cell.type Cell types to classify each sub population.
+#' @param within.sample True or False. Set to TRUE for comparison between control and test data. For within sample cell type annotation, set to FALSE.
+#' @param method Choice of "ZINB", "Mahalanobis", "z-score", "IsoForest" and "Taxi cab". "ZINB" can be used without a reference data set.
 #' @param goi Gene. Gene of interest (goi). For use with "ZINB" classification.
 #' @param percentile Double. Percentile cutoff for distance based scoreing metrics.
 #' @param path Directory for output tables.
 #' @param verbose Print progress bars and output.
 #'
 #' @return A Seurat object list containing metadata and VDJ annotations.
-#' @concept annotation
 #' @concept Single cell analysis
 #'
 #' @export
 ClassifyCellTypes <- function(
-    Clonal_Obs,
-    Clonotypes,
+    cell.data,
+    annotation.tab,
+    cell.type="cdr3_na",
     within.sample=FALSE,
     method="ZINB",
     goi=c("IFNG"),
@@ -831,16 +833,16 @@ ClassifyCellTypes <- function(
   if(method=="ZINB"){
   path=paste(paste(path,"/",sep=""),paste(paste(goi[1],"ClassificationTable",sep=""),".csv",sep=""),sep="")
   print(path)
-  CloneList=subset(Clonotypes,avg>3)$`Clone (nucleic)`
-  ClassArray=data.frame(matrix(data="-",ncol=((4*(length(Clonal_Obs)-1))+2),nrow=length(CloneList)))
+  CloneList=subset(annotation.tab,avg>3)$`Clone (nucleic)`
+  ClassArray=data.frame(matrix(data="-",ncol=((4*(length(cell.data)-1))+2),nrow=length(CloneList)))
   names.sample=0
   if(within.sample==FALSE){
-  for(j in 1:(length(Clonal_Obs)-1)){
+  for(j in 1:(length(cell.data)-1)){
   names.sample=append(names.sample,c(
-    paste(levels(factor(Clonal_Obs[[1]]@meta.data$orig.ident)),".status",sep=""),
-    paste(levels(factor(Clonal_Obs[[1+j]]@meta.data$orig.ident)),".status",sep=""),
-    paste(levels(factor(Clonal_Obs[[1]]@meta.data$orig.ident)),".abundance",sep=""),
-    paste(levels(factor(Clonal_Obs[[1+j]]@meta.data$orig.ident)),".abundance",sep="")
+    paste(levels(factor(cell.data[[1]]@meta.data$orig.ident)),".status",sep=""),
+    paste(levels(factor(cell.data[[1+j]]@meta.data$orig.ident)),".status",sep=""),
+    paste(levels(factor(cell.data[[1]]@meta.data$orig.ident)),".abundance",sep=""),
+    paste(levels(factor(cell.data[[1+j]]@meta.data$orig.ident)),".abundance",sep="")
   ))
 
   }
@@ -849,18 +851,18 @@ ClassifyCellTypes <- function(
 
       names.sample=append(names.sample,c(
         paste("sample",".status",sep=""),
-        paste(levels(factor(Clonal_Obs[[1]]@meta.data$orig.ident)),".status",sep=""),
+        paste(levels(factor(cell.data[[1]]@meta.data$orig.ident)),".status",sep=""),
         paste("sample",".abundance",sep=""),
-        paste(levels(factor(Clonal_Obs[[1]]@meta.data$orig.ident)),".abundance",sep="")
+        paste(levels(factor(cell.data[[1]]@meta.data$orig.ident)),".abundance",sep="")
       ))
 
 
   }
   names.sample=names.sample[-1]
-  names.sample=append(names.sample,c("cdr3_na","phenotype"))
+  names.sample=append(names.sample,c("cell.type","phenotype"))
   names(ClassArray) <- names.sample
 
-  df_speed=Clonal_Obs[[1]]@meta.data
+  df_speed=cell.data[[1]]@meta.data
 
 
   if(within.sample==FALSE){
@@ -868,9 +870,9 @@ ClassifyCellTypes <- function(
 
     LE=dim(ClassArray)[[2]]
     ClassArray[g,(LE-1)]=CloneList[g]
-    cd4prop=length(subset(df_speed,cdr3_na == CloneList[g] & CD4cells=="1")$CD4cells)
-    cd8prop=length(subset(df_speed,cdr3_na == CloneList[g] & CD8cells=="1")$CD8cells)
-    lenCln=length(subset(df_speed,cdr3_na == CloneList[g])$CD8cells)
+    cd4prop=length(subset(df_speed,cell.type == CloneList[g] & CD4cells=="1")$CD4cells)
+    cd8prop=length(subset(df_speed,cell.type == CloneList[g] & CD8cells=="1")$CD8cells)
+    lenCln=length(subset(df_speed,cell.type == CloneList[g])$CD8cells)
     if((lenCln>5)&(cd4prop>cd8prop)){
       ClassArray[g,(LE)]="CD4"
     }else if((lenCln>5)&(cd8prop>cd4prop)){
@@ -879,20 +881,20 @@ ClassifyCellTypes <- function(
       ClassArray[g,(LE)]="-"
     }
 
-    for(j in 1:(length(Clonal_Obs)-1)){
+    for(j in 1:(length(cell.data)-1)){
     TCR1=CloneList[g]
-    GOIUS=match(goi,row.names(Clonal_Obs[[1]]@assays$RNA@counts))
-    GOISTIM=match(goi,row.names(Clonal_Obs[[1+j]]@assays$RNA@counts))
-    if((length(intersect(Clonal_Obs[[1]]@meta.data$cdr3_na,TCR1))>0)&&
-       (length(intersect(Clonal_Obs[[1+j]]@meta.data$cdr3_na,TCR1))>0)){
+    GOIUS=match(goi,row.names(cell.data[[1]]@assays$RNA@counts))
+    GOISTIM=match(goi,row.names(cell.data[[1+j]]@assays$RNA@counts))
+    if((length(intersect(cell.data[[1]]@meta.data$cell.type,TCR1))>0)&&
+       (length(intersect(cell.data[[1+j]]@meta.data$cell.type,TCR1))>0)){
 
-      if((dim(subset(Clonal_Obs[[1]],cdr3_na %in% TCR1))[2]>2)&&
-         (dim(subset(Clonal_Obs[[1+j]],cdr3_na %in% TCR1))[2]>2)){
+      if((dim(subset(cell.data[[1]],cell.type %in% TCR1))[2]>2)&&
+         (dim(subset(cell.data[[1+j]],cell.type %in% TCR1))[2]>2)){
 
         if(length(goi)==1){
-          mats=cbind((t(as.matrix(subset(Clonal_Obs[[1]],cdr3_na %in% TCR1)@assays$RNA@counts[GOIUS,]))),
-                     (t(as.matrix(subset(Clonal_Obs[[1+j]],cdr3_na %in% TCR1)@assays$RNA@counts[GOISTIM,]))))
-          grouper=c(rep(1,dim(t(as.matrix(subset(Clonal_Obs[[1]],cdr3_na %in% TCR1)@assays$RNA@counts[GOIUS[1],])))[2]),rep(2,dim(t(as.matrix(subset(Clonal_Obs[[1+j]],cdr3_na %in% TCR1)@assays$RNA@counts[GOISTIM[1],])))[2]))
+          mats=cbind((t(as.matrix(subset(cell.data[[1]],cell.type %in% TCR1)@assays$RNA@counts[GOIUS,]))),
+                     (t(as.matrix(subset(cell.data[[1+j]],cell.type %in% TCR1)@assays$RNA@counts[GOISTIM,]))))
+          grouper=c(rep(1,dim(t(as.matrix(subset(cell.data[[1]],cell.type %in% TCR1)@assays$RNA@counts[GOIUS[1],])))[2]),rep(2,dim(t(as.matrix(subset(cell.data[[1+j]],cell.type %in% TCR1)@assays$RNA@counts[GOISTIM[1],])))[2]))
 
           if(sum(mats!=0)>5){
             output1=DEsingle(mats,factor(grouper),goi)
@@ -935,9 +937,9 @@ ClassifyCellTypes <- function(
           }
           }
         else{
-        mats=cbind((as.matrix(subset(Clonal_Obs[[1]],cdr3_na %in% TCR1)@assays$RNA@counts[GOIUS,])),
-                   (as.matrix(subset(Clonal_Obs[[1+j]],cdr3_na %in% TCR1)@assays$RNA@counts[GOISTIM,])))
-        grouper=c(rep(1,dim(t(as.matrix(subset(Clonal_Obs[[1]],cdr3_na %in% TCR1)@assays$RNA@counts[GOIUS[1],])))[2]),rep(2,dim(t(as.matrix(subset(Clonal_Obs[[1+j]],cdr3_na %in% TCR1)@assays$RNA@counts[GOISTIM[1],])))[2]))
+        mats=cbind((as.matrix(subset(cell.data[[1]],cell.type %in% TCR1)@assays$RNA@counts[GOIUS,])),
+                   (as.matrix(subset(cell.data[[1+j]],cell.type %in% TCR1)@assays$RNA@counts[GOISTIM,])))
+        grouper=c(rep(1,dim(t(as.matrix(subset(cell.data[[1]],cell.type %in% TCR1)@assays$RNA@counts[GOIUS[1],])))[2]),rep(2,dim(t(as.matrix(subset(cell.data[[1+j]],cell.type %in% TCR1)@assays$RNA@counts[GOISTIM[1],])))[2]))
         if(sum(mats!=0)>5){
           output1=DEsingle(mats,factor(grouper),goi)
           ThetaIDX=which.min(output1$pvalue_LR2)
@@ -989,9 +991,9 @@ ClassifyCellTypes <- function(
 
       LE=dim(ClassArray)[[2]]
       ClassArray[g,(LE-1)]=CloneList[g]
-      cd4prop=length(subset(df_speed,cdr3_na == CloneList[g] & CD4cells=="1")$CD4cells)
-      cd8prop=length(subset(df_speed,cdr3_na == CloneList[g] & CD8cells=="1")$CD8cells)
-      lenCln=length(subset(df_speed,cdr3_na == CloneList[g])$CD8cells)
+      cd4prop=length(subset(df_speed,cell.type == CloneList[g] & CD4cells=="1")$CD4cells)
+      cd8prop=length(subset(df_speed,cell.type == CloneList[g] & CD8cells=="1")$CD8cells)
+      lenCln=length(subset(df_speed,cell.type == CloneList[g])$CD8cells)
       if((lenCln>5)&(cd4prop>cd8prop)){
         ClassArray[g,(LE)]="CD4"
       }else if((lenCln>5)&(cd8prop>cd4prop)){
@@ -1002,19 +1004,19 @@ ClassifyCellTypes <- function(
 
       for(j in 1:1){
         TCR1=CloneList[g]
-        GOIUS=match(goi,row.names(Clonal_Obs[[1]]@assays$RNA@counts))
+        GOIUS=match(goi,row.names(cell.data[[1]]@assays$RNA@counts))
         GOISTIM=GOIUS
-        TCRS=setdiff(levels(factor(Clonal_Obs[[1]]@meta.data$cdr3_na)),TCR1)
-        if((length(intersect(Clonal_Obs[[1]]@meta.data$cdr3_na,TCR1))>0)&&
-           (length(intersect(Clonal_Obs[[1]]@meta.data$cdr3_na,TCRS))>0)){
+        TCRS=setdiff(levels(factor(cell.data[[1]]@meta.data$cell.type)),TCR1)
+        if((length(intersect(cell.data[[1]]@meta.data$cell.type,TCR1))>0)&&
+           (length(intersect(cell.data[[1]]@meta.data$cell.type,TCRS))>0)){
 
-          if((dim(subset(Clonal_Obs[[1]],cdr3_na %in% TCR1))[2]>2)&&
-             (dim(subset(Clonal_Obs[[1]],cdr3_na %in% TCRS))[2]>2)){
+          if((dim(subset(cell.data[[1]],cell.type %in% TCR1))[2]>2)&&
+             (dim(subset(cell.data[[1]],cell.type %in% TCRS))[2]>2)){
 
             if(length(goi)==1){
-              mats=cbind((t(as.matrix(subset(Clonal_Obs[[1]],cdr3_na %in% TCRS)@assays$RNA@counts[GOIUS,]))),
-                         (t(as.matrix(subset(Clonal_Obs[[1]],cdr3_na %in% TCR1)@assays$RNA@counts[GOISTIM,]))))
-              grouper=c(rep(1,dim(t(as.matrix(subset(Clonal_Obs[[1]],cdr3_na %in% TCRS)@assays$RNA@counts[GOIUS,])))[2]),rep(2,dim(t(as.matrix(subset(Clonal_Obs[[1]],cdr3_na %in% TCR1)@assays$RNA@counts[GOISTIM,])))[2]))
+              mats=cbind((t(as.matrix(subset(cell.data[[1]],cell.type %in% TCRS)@assays$RNA@counts[GOIUS,]))),
+                         (t(as.matrix(subset(cell.data[[1]],cell.type %in% TCR1)@assays$RNA@counts[GOISTIM,]))))
+              grouper=c(rep(1,dim(t(as.matrix(subset(cell.data[[1]],cell.type %in% TCRS)@assays$RNA@counts[GOIUS,])))[2]),rep(2,dim(t(as.matrix(subset(cell.data[[1]],cell.type %in% TCR1)@assays$RNA@counts[GOISTIM,])))[2]))
 
               if(sum(mats!=0)>5){
                 output1=DEsingle(mats,factor(grouper),goi)
@@ -1056,9 +1058,9 @@ ClassifyCellTypes <- function(
                 }
               }
             }else{
-              mats=cbind((as.matrix(subset(Clonal_Obs[[1]],cdr3_na %in% TCRS)@assays$RNA@counts[GOIUS,])),
-                         (as.matrix(subset(Clonal_Obs[[1]],cdr3_na %in% TCR1)@assays$RNA@counts[GOISTIM,])))
-              grouper=c(rep(1,dim(t(as.matrix(subset(Clonal_Obs[[1]],cdr3_na %in% TCRS)@assays$RNA@counts[GOIUS[1],])))[2]),rep(2,dim(t(as.matrix(subset(Clonal_Obs[[1]],cdr3_na %in% TCR1)@assays$RNA@counts[GOISTIM[1],])))[2]))
+              mats=cbind((as.matrix(subset(cell.data[[1]],cell.type %in% TCRS)@assays$RNA@counts[GOIUS,])),
+                         (as.matrix(subset(cell.data[[1]],cell.type %in% TCR1)@assays$RNA@counts[GOISTIM,])))
+              grouper=c(rep(1,dim(t(as.matrix(subset(cell.data[[1]],cell.type %in% TCRS)@assays$RNA@counts[GOIUS[1],])))[2]),rep(2,dim(t(as.matrix(subset(cell.data[[1]],cell.type %in% TCR1)@assays$RNA@counts[GOISTIM[1],])))[2]))
               if(sum(mats!=0)>5){
                 output1=DEsingle(mats,factor(grouper),goi)
                 ThetaIDX=which.min(output1$pvalue_LR2)
@@ -1123,26 +1125,26 @@ ClassifyCellTypes <- function(
       ClassifyCells(cell.data,cell.arrayPFlog1pPF,signature.ref,Glist,distance=inputdistance)
     }
     path=paste(path,paste(paste(goi,"ClassificationTable",sep=""),".csv",sep=""),sep="")
-    CloneList=subset(Clonotypes,avg>3)$Clone..nucleic.
-    ClassArray=data.frame(matrix(ncol=(((length(Clonal_Obs)))+2),nrow=length(CloneList)))
+    CloneList=subset(annotation.tab,avg>3)$Clone..nucleic.
+    ClassArray=data.frame(matrix(ncol=(((length(cell.data)))+2),nrow=length(CloneList)))
     names.sample=0
-    for(j in 1:(length(Clonal_Obs)-1)){
+    for(j in 1:(length(cell.data)-1)){
       names.sample=append(names.sample,c(
-        paste(levels(factor(Clonal_Obs[[j]]@meta.data$orig.ident)),".Rscore",sep="")))
+        paste(levels(factor(cell.data[[j]]@meta.data$orig.ident)),".Rscore",sep="")))
 
     }
     names.sample=names.sample[-1]
-    names.sample=append(names.sample,c("cdr3_na","phenotype"))
+    names.sample=append(names.sample,c("cell.type","phenotype"))
     names(ClassArray) <- names.sample
 
-    df_speed=Clonal_Obs[[1]]@meta.data
+    df_speed=cell.data[[1]]@meta.data
 
     for(g in 1:length(CloneList)){
       LE=dim(ClassArray)[[2]]
       ClassArray[g,(LE-1)]=CloneList[g]
-      cd4prop=length(subset(df_speed,cdr3_na == CloneList[g] & CD4cells=="1")$CD4cells)
-      cd8prop=length(subset(df_speed,cdr3_na == CloneList[g] & CD8cells=="1")$CD8cells)
-      lenCln=length(subset(df_speed,cdr3_na == CloneList[g])$CD8cells)
+      cd4prop=length(subset(df_speed,cell.type == CloneList[g] & CD4cells=="1")$CD4cells)
+      cd8prop=length(subset(df_speed,cell.type == CloneList[g] & CD8cells=="1")$CD8cells)
+      lenCln=length(subset(df_speed,cell.type == CloneList[g])$CD8cells)
       if((lenCln>5)&(cd4prop>cd8prop)){
         ClassArray[g,(LE)]="CD4"
       }
@@ -1154,10 +1156,10 @@ ClassifyCellTypes <- function(
       }
       print(g)
 
-      for(j in 1:(length(Clonal_Obs)-1)){
+      for(j in 1:(length(cell.data)-1)){
     array.name=1
-    Clonal_Obs[[j]]=AddDistances(Clonal_Obs[[j]],array.name,reference,path.glist,distance = inputdistance)
-    ClassArray[g,j]=mean(subset(Clonal_Obs[[j]],`cdr3_na` %in% CloneList[g])@meta.data$Mdist)
+    cell.data[[j]]=AddDistances(cell.data[[j]],array.name,reference,path.glist,distance = inputdistance)
+    ClassArray[g,j]=mean(subset(cell.data[[j]],`cell.type` %in% CloneList[g])@meta.data$Mdist)
       }
     }
 
@@ -1165,7 +1167,7 @@ ClassifyCellTypes <- function(
     Thresh=quantile(ClassArray[,c.index],percentile)
     for(g in 1:length(CloneList)){
 
-      for(j in 1:length(Clonal_Obs)){
+      for(j in 1:length(cell.data)){
         if(ClassArray[g,j]<Thresh){
       ClassArray[g,j]="Specific"
         }

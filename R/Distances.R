@@ -1,24 +1,27 @@
 #%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 # Functions
 #%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-#' Return the Rscore of single cells in a query dataset compared to reference
+#' Cell classifier function that assigns a mean distance per cell type based on several metrics used for single cell RNA sequencing classification.
 #'
-#' This function will compute the response score (Rscore) for each single cell in samples that have been activated
-#' and sequenced. For each cell in the reference, we construct the positive definite covariance matrix
-#' of the reference data set reference.data. Takes as input two Seurat objects, one containing
+#' This function will compute a classification for each single cell in samples that have been activated
+#' and sequenced. Takes as input two Seurat objects, one containing
 #' the query cells and another containing the reference. A gene list
-#' used to construct the distance and output path for plotting. Other parameters are listed for debugging,
-#' but can be left
-#' as default values.
-#' there are different functions for different genesets
+#' used to construct the distance and output path for plotting and storing the mean distance per cell type. 
+#' Other parameters are listed for debugging, but can be left as default values.
 #'
 #' @param output.array A Seurat object containing cells that are to be assigned an Rscore.
-#' @param normalized.array A matrix of query data normalized counts.
 #' @param reference.data Matrix of doubles. Reference data used to calculate the Rscore.
 #' @param gene.list Vector. List of genes in the gene signature.
+#' @param cell.types Vector. List of cell types for classification.
+#' @param distance Can be set to 0,1,2 or 3. Choice of 0 returns the Mahalanobis distance, 1 returns the taxicab distance, 2 returns the z-score and 3 returns the isolation forest distance. 
 #' @param scramble Bool. To asses the effect of the gene signature on the Rscore, select a random set of genes and compute their distance from the reference data.
+#' @param withSCT Print progress bars and output
+#' @param ntrees Print progress bars and output
+#' @param maxheight Print progress bars and output
+#' @param PRINT True or false
+#' @param file.path path to save metadata as spreadsheet if PRINT is set to TRUE
 #' @param verbose Print progress bars and output
-#' @return A Seurat object containing metadata with the Rscore.
+#' @return A Seurat object containing aocseq cell classification metadata.
 #' @concept Single cell analysis
 #'
 #' @export
@@ -206,7 +209,7 @@ ClassifyCells <- function(
     cell.types=levels(factor(output.array@meta.data$celltype))
     
     cell_outliers<-CellTypeLoop(output.array,cell.types,reference.data,gene.list,
-              ntrees,maxheight,subsample.count=ncol(reference.data)+1, cutoff=.75)
+              ntrees,maxheight,subsample.count=ncol(reference.data)+1)
     
     output.array=AddMetaData(output.array, cell_outliers$outlier_fraction, col.name = 'Isoforest')
     
@@ -228,12 +231,12 @@ ClassifyCells <- function(
 #' @param cell.data A Seurat object containing cells that are to be assigned a distance.
 #' @param cell.types A list of the cell types (currently this is clonotypes).
 #' @param reference.data Normalized reference data.
-#' @param genes Genes to pull from the query dataset.
+#' @param genes Genes to pull from the query data set.
 #' @param ntrees Number of trees used for the isolation forest.
 #' @param maxheight Maximum height used for the isolation forest.
-#' @param subsample.count Subsampling number for isolation forest.
-#' @param cutoff Maximum cutoff.
-#' @return A Seurat object containing metadata with the Rscore.
+#' @param solver True or false If true an Rcpp implementation of the software is used
+#' @param subsample.count Sub sampling number for isolation forest.
+#' @return A data frame containing the mean normalized isolation forest score for each cell type.
 #' @concept Single cell analysis
 #'
 #' @export
@@ -245,8 +248,7 @@ CellTypeLoop<-function(
     ntrees, 
     maxheight, 
     solver=TRUE,
-    subsample.count=ncol(reference.data)+1, 
-    cutoff=.75){
+    subsample.count=ncol(reference.data)+1){
   
   if(solver){
   unique_types<-levels(factor(cell.types))
@@ -254,10 +256,10 @@ CellTypeLoop<-function(
   for (i in 1:length(unique_types)) {
     
     ##Select only counts from signature genes
-    test_set=as.matrix(subset(cell.data,`celltype`==unique_types[i])@assays$SCT@counts[genes,])
+    cell.data=as.matrix(subset(cell.data,`celltype`==unique_types[i])@assays$SCT@counts[genes,])
     ##Set clonotype score will hold normalized heights for all cells in the clonotype
-    numcells=dim(test_set)[2]
-    test_df<-as.data.frame(cbind(as.matrix(reference.data), test_set[, 1]))
+    numcells=dim(cell.data)[2]
+    test_df<-as.data.frame(cbind(as.matrix(reference.data), cell.data[, 1]))
     TestCells=unname(as.matrix(test_df))
     Tref=rep(0,dim(TestCells)[1]*dim(TestCells)[2])
     Tsg=rep(0,dim(TestCells)[2])
@@ -268,7 +270,7 @@ CellTypeLoop<-function(
       }
     }
     
-    allcellsF=unname(as.matrix(as.data.frame(as.matrix(test_set))))
+    allcellsF=unname(as.matrix(as.data.frame(as.matrix(cell.data))))
     Tcd=rep(0,dim(allcellsF)[1]*dim(allcellsF)[2])
     Tsg2=rep(0,numcells)
     for(s in 1:dim(allcellsF)[1]){
@@ -300,7 +302,7 @@ CellTypeLoop<-function(
     print(paste0('processing ', unique_types[i]))
     select_clone<-subset(cell.data, cdr3_na==unique_types[i])
     select_clone_mat<-select_clone@assays$SCT@data
-    clone_result<-percent_outlier(select_clone_mat, reference.data, genes, ntrees, maxheight, subsample.count, cutoff)
+    clone_result<-percent_outlier(select_clone_mat, reference.data, genes, ntrees, maxheight, subsample.count)
     df[i,'outlier_fraction']<-clone_result$outlier_fraction
     }
   }
@@ -315,18 +317,19 @@ CellTypeLoop<-function(
 #'
 #' @export
 NormalizationScore<-function(
-    df)
-  {
+    df){
+  
   c<-2*(log(dim(df)[1]-1)+0.5772156649) - (2.0*(log(dim(df)[1]-1)/(log(dim(df)[1]*1.0))))
   df[,'normalization_score']<-2^(-df[,'avg_height']/c)
   return(df)
+  
 }
 
-#' This function determines what constitues an outlier and what does not in the isolation forest algorithm
+#' This function sets the cell.types as meta data.
 #'
-#' @param cell.data A Seurat Object
-#' @param cell.types Single cell metadata
-#' @return Normalized values
+#' @param cell.data A Seurat Object.
+#' @param cell.types Single cell metadata.
+#' @return A Seurat Object.
 #' @concept Annotation
 #'
 #' @export
@@ -344,37 +347,34 @@ SetCellType<-function(
 #' This function will return the percentage of cells that are outliers when compared to a reference data set.
 #'
 #' @param cell.data A Seurat object containing cells that are to be assigned a distance.
-#' @param cell.types A list of the cell types (currently this is clonotypes).
 #' @param reference.data Normalized reference data.
 #' @param genes Genes to pull from the query dataset.
 #' @param ntrees Number of trees used for the isolation forest.
 #' @param maxheight Maximum height used for the isolation forest.
 #' @param subsample.count Subsampling number for isolation forest.
-#' @param cutoff Maximum cutoff.
-#' @return A data frame with the percentage of cells that are outliers
+#' @return A data frame with the percentage of cells that are outliers.
 #' @concept Single cell analysis
 #'
 #' @export
 percent_outlier<-function(
-    test_set, 
+    cell.data, 
     reference.data, 
     genes, 
     ntrees, 
     maxheight,
-    subsample.count=ncol(reference.data)+1, 
-    cutoff=.75){
+    subsample.count=ncol(reference.data)+1){
 
     ################################################################################################
     ### This section of the code implements a version of the isolation forest written in Rscript ###
     ################################################################################################
-  numcells<-ncol(test_set)
-  test_set<-test_set[genes,]
+  numcells<-ncol(cell.data)
+  cell.data<-cell.data[genes,]
   reference.data<-reference.data[genes,]
   num_outliers<-0
   normalization_score_list<-c()
   height_list=0
   for (i in 1:numcells) {
-    cell<-test_set[, i]
+    cell<-cell.data[, i]
     if(length(genes)>1){
       working_set<-cbind(as.matrix(reference.data), cell)
       
