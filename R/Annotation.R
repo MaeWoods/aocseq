@@ -23,7 +23,7 @@
 #' @return A data frame containing clonotypes and summary statistics of transcript expression.
 #' @concept Annotation
 #' @export
-Annotatecell.types <- function(
+AnnotateCellTypes <- function(
     cell.data,
     goi,
     cell.type="cdr3_na",

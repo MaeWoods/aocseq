@@ -26,7 +26,7 @@
 #' @return A data frame containing clonotypes and summary statistics of transcript expression.
 #' @concept Visualization
 #' @export
-segmentPlot <- function(
+SegmentPlot <- function(
     SummaryTable,
     names=c("S1","S2"),
     segment.names=c("S1","S2"),

@@ -14,14 +14,14 @@
 #' Calculate the posterior probabilities (soft labels) that each component
 #' has to each data point.
 #'
-#' @title e_step
+#' @title EStep
 #' @param sd.vector Vector containing the standard deviations of each component
 #' @param sd.vector Vector containing the mean of each component
 #' @param alpha.vector Vector containing the mixing weights  of each component
 #' @return Named list containing the loglik and posterior.df
 #' @concept Routine functions
 #' @export
-e_step <- function(x, mu.vector, sd.vector, alpha.vector) {
+EStep <- function(x, mu.vector, sd.vector, alpha.vector) {
   comp1.prod <- dnorm(x, mu.vector[1], sd.vector[1]) * alpha.vector[1]
   comp2.prod <- dnorm(x, mu.vector[2], sd.vector[2]) * alpha.vector[2]
   sum.of.comps <- comp1.prod + comp2.prod
@@ -45,7 +45,7 @@ e_step <- function(x, mu.vector, sd.vector, alpha.vector) {
 #' @return Named list containing the mean (mu), variance (var), and mixing weights (alpha) for each component.
 #' @concept Routine functions
 #' @export
-m_step <- function(x, posterior.df
+MStep <- function(x, posterior.df
 ){
   comp1.n <- sum(na.omit(posterior.df[, 1]))
   comp2.n <- sum(na.omit(posterior.df[, 2]))
@@ -81,7 +81,7 @@ m_step <- function(x, posterior.df
 #' @return A Seurat object that has been split by hastagged demultiplexing. 
 #' @concept Statistical inference
 #' @export
-GMM_demux<-function(
+GMMDemux<-function(
     s.name,
     data, hashtag.index, 
     nameshashtags, 
@@ -153,17 +153,17 @@ GMM_demux<-function(
     for (i in 1:50) {
       if (i == 1) {
         # Initialization
-        e.step <- e_step(wait, wait.summary.df1[["mu"]], wait.summary.df1[["std"]],
+        e.step <- EStep(wait, wait.summary.df1[["mu"]], wait.summary.df1[["std"]],
                          wait.summary.df1[["alpha"]])
-        m.step1 <- m_step(wait, e.step[["posterior.df"]])
+        m.step1 <- MStep(wait, e.step[["posterior.df"]])
         cur.loglik <- e.step[["loglik"]]
         loglik.vector <- e.step[["loglik"]]
       }
       else {
         # Repeat E and M steps till convergence
-        e.step <- e_step(wait, m.step1[["mu"]], sqrt(m.step1[["var"]]),
+        e.step <- EStep(wait, m.step1[["mu"]], sqrt(m.step1[["var"]]),
                          m.step1[["alpha"]])
-        m.step1 <- m_step(wait, e.step[["posterior.df"]])
+        m.step1 <- MStep(wait, e.step[["posterior.df"]])
         loglik.vector <- c(loglik.vector, e.step[["loglik"]])
 
         loglik.diff <- abs((cur.loglik - e.step[["loglik"]]))
@@ -293,25 +293,24 @@ GMM_demux<-function(
 #' A gene list used to estimate specificity can be chosen and is application specific.
 #' Other parameters are listed for debugging, but can be left as default values.
 #'
-#' @param gex.path path to gene expression data in the format of cellranger feature barcode matrices
-#' @param marker.gene list of marker genes used for specificity analysis
-#' @param vdj.path path to VDJ expression data in the format of cellranger csv files
-#' @param threshold.cutoff list of marker genes used for specificity analysis
-#' @param file.saved directory for storing Seurat object RDS files
-#' @param index.control index of the control sequencing sample
-#' @param c.index index of the control sequencing sample
-#' @param sample.name index of the control sequencing sample
-#' @param preset If set to 1, preset determines the threshold for cutoff if a control is included in the assay. If set to 0 a cutoff is set by the threshold.entry, which defines what value is high for all samples. If set to 2 a cutoff is set per sample using 
+#' @param gex.path path to gene expression data in the format of cellranger feature barcode matrices.
+#' @param marker.gene list of marker genes used for specificity analysis.
+#' @param vdj.path path to VDJ expression data in the format of cellranger csv files.
+#' @param threshold.cutoff list of marker genes used for specificity analysis.
+#' @param file.saved directory for storing Seurat object RDS files.
+#' @param index.control Index of the control sequencing sample.
+#' @param sample.name Names that will be added to each sample orig.ident.
+#' @param preset If set to 1, preset determines the threshold for cutoff if a control is included in the assay. If set to 0 a cutoff is set by the threshold.entry, which defines what value is high for all samples. If set to 2 a cutoff is set per sample.
 #' @param threshold.entry Double. Sets the percentile above which gene expression is labelled as high.
-#' @param demultiplex Boolean value used to indicate if the data was hashtagged
-#' @param demultiplex.index Boolean value used to indicate if the data was hashtagged
-#' @param names.hashtag Boolean value used to indicate if the data was hashtagged
-#' @param n.ht.per.sample Boolean value used to indicate if the data was hashtagged
-#' @param tenX_conversion Boolean value used to indicate if the data was hashtagged
-#' @param nFeature_RNA_lower Boolean value used to indicate if the data was hashtagged
-#' @param nFeature_RNA_upper Boolean value used to indicate if the data was hashtagged
-#' @param nvariable_features Boolean value used to indicate if the data was hashtagged
-#' @param percent.mt_upper Boolean value used to indicate if the data was hashtagged
+#' @param demultiplex Boolean value used to indicate if the data was hashtagged and therefore requires to be split.
+#' @param demultiplex.index Indexes to select columns with hashtag counts in the 10X genomics Seurat object assay. This depends on the 10X genomics chemistry and output from cellranger.
+#' @param names.hashtag hashtag sample names.
+#' @param n.ht.per.sample Number of hashtags used per sample (only set if hashtagging has been used).
+#' @param tenX_conversion Parameter for 10X compatability.
+#' @param nFeature_RNA_lower Threshold for the minimum number of unique gene identifiers detected in a single cell.
+#' @param nFeature_RNA_upper Threshold for the maximum number of unique gene identifiers detected in a single cell.
+#' @param nvariable_features Threshold for the maximum total number of unique gene identifiers detected in a single cell for dimension reduction.
+#' @param percent.mt_upper Threshold for the maximum percentage of unique mitochondrial gene identifiers detected in a single cell.
 #' @param verbose Print progress bars and output
 #' @param QC_plots Print progress bars and output
 #'
@@ -324,8 +323,7 @@ CombineData <- function(
   vdj.path=c(),
   threshold.cutoff=.975,
   file.saved="samples.rds",
-  index.control=1,
-  c.index=c(-1),
+  index.control=c(-1),
   sample.name=c(-1),
   preset=1,
   threshold.entry=0,
@@ -346,12 +344,12 @@ CombineData <- function(
 ){
 
   #Set undefined parameters
-  if(c.index[1]==-1){
+  if(index.control[1]==-1){
     if(demultiplex){
-      c.index=rep(1,n.ht.per.sample)
+      index.control=rep(1,n.ht.per.sample)
     }
     else{
-    c.index=rep(1,length(gex.path))
+    index.control=rep(1,length(gex.path))
     }
   }
   if(sample.name[1]==-1){
@@ -627,7 +625,7 @@ CombineData <- function(
           if(s %in% mask){
             vec1=as.matrix(Clonal_Obs[[k]][['RNA']]@counts)[Gene_indUMORNA[s],]
             for(j in 1:dim(Clonal_Obs[[k]])[2]){
-              if(vec1[j]>cutoff[[c.index[k]]][s]){
+              if(vec1[j]>cutoff[[index.control[k]]][s]){
                 Thresholds[j,s]="high"
               }
             }
@@ -635,7 +633,7 @@ CombineData <- function(
           else{
           vec1=as.matrix(Clonal_Obs[[k]][["SCT"]]@data)[Gene_indUMO[s],]
           for(j in 1:dim(Clonal_Obs[[k]])[2]){
-            if(vec1[j]>cutoff[[c.index[k]]][s]){
+            if(vec1[j]>cutoff[[index.control[k]]][s]){
               
               Thresholds[j,s]="high"
             }
@@ -648,7 +646,7 @@ CombineData <- function(
         for(s in 1:number.marker.genes){
           vec1=unname(as.matrix(Clonal_Obs[[k]][["SCT"]]@data)[Gene_indUMO[s],])
           for(j in 1:dim(Clonal_Obs[[k]])[2]){
-            if(vec1[j]>cutoff[[c.index[k]]][s]){
+            if(vec1[j]>cutoff[[index.control[k]]][s]){
               Thresholds[j,s]="high"
             }
           }
@@ -1035,7 +1033,7 @@ if(length(mask)>0){
     if(s %in% mask){
       vec1=as.matrix(Clonal_Obs[[k]][['RNA']]$counts)[Gene_indUMORNA[s],]
       for(j in 1:dim(Clonal_Obs[[k]])[2]){
-        if(vec1[j]>cutoff[[c.index[k]]][s]){
+        if(vec1[j]>cutoff[[index.control[k]]][s]){
           Thresholds[j,s]="high"
         }
       }
@@ -1043,7 +1041,7 @@ if(length(mask)>0){
     else{
       vec1=as.matrix(Clonal_Obs[[k]][["SCT"]]$data)[Gene_indUMO[s],]
       for(j in 1:dim(Clonal_Obs[[k]])[2]){
-        if(vec1[j]>cutoff[[c.index[k]]][s]){
+        if(vec1[j]>cutoff[[index.control[k]]][s]){
           
           Thresholds[j,s]="high"
         }
@@ -1056,7 +1054,7 @@ else{
   for(s in 1:number.marker.genes){
     vec1=unname(as.matrix(Clonal_Obs[[k]][["SCT"]]$data)[Gene_indUMO[s],])
     for(j in 1:dim(Clonal_Obs[[k]])[2]){
-      if(vec1[j]>cutoff[[c.index[k]]][s]){
+      if(vec1[j]>cutoff[[index.control[k]]][s]){
         Thresholds[j,s]="high"
       }
     }

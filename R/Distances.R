@@ -302,7 +302,7 @@ CellTypeLoop<-function(
     print(paste0('processing ', unique_types[i]))
     select_clone<-subset(cell.data, cdr3_na==unique_types[i])
     select_clone_mat<-select_clone@assays$SCT@data
-    clone_result<-percent_outlier(select_clone_mat, reference.data, genes, ntrees, maxheight, subsample.count)
+    clone_result<-PercentOutlier(select_clone_mat, reference.data, genes, ntrees, maxheight, subsample.count)
     df[i,'outlier_fraction']<-clone_result$outlier_fraction
     }
   }
@@ -356,7 +356,7 @@ SetCellType<-function(
 #' @concept Single cell analysis
 #'
 #' @export
-percent_outlier<-function(
+PercentOutlier<-function(
     cell.data, 
     reference.data, 
     genes, 
@@ -390,7 +390,7 @@ percent_outlier<-function(
     }
     
     colnames(test_df)<-genes
-    height_df<-Iso_forest(test_df, ntrees, maxheight, subsample.count,kurtosis_param=TRUE)
+    height_df<-IsoForest(test_df, ntrees, maxheight, subsample.count,kurtosis_param=TRUE)
     results_df<-NormalizationScore(height_df)
     cell_results<-results_df[do.call(paste0, results_df[,1:length(genes), drop=FALSE]) == do.call(paste0, as.list(cell)), ]
     if(cell_results$normalization_score>0.75){

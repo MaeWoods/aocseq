@@ -1,4 +1,5 @@
-#'This is a copy of DEsingle that was lifted from the orginal package, see https://bioconductor.org/packages/release/bioc/html/DEsingle.html
+#'This is a copy of DEsingle that was lifted from the orginal package, see 
+#'https://bioconductor.org/packages/release/bioc/html/DEsingle.html
 #'and included in the aocseq package with modifications for package compatibility
 #' DEsingle: Detecting differentially expressed genes from scRNA-seq data
 #' This function is used to detect differentially expressed genes between two specified groups of cells in a raw read counts matrix of single-cell RNA-seq (scRNA-seq) data. It takes a non-negative integer matrix of scRNA-seq raw read counts or a \code{SingleCellExperiment} object as input. So users should map the reads (obtained from sequencing libraries of the samples) to the corresponding genome and count the reads mapped to each gene according to the gene annotation to get the raw read counts matrix in advance.
@@ -696,7 +697,7 @@ DEsingle <- function(counts, group, goi, parallel = FALSE, BPPARAM = bpparam()){
 #'
 #' @export
 
-construct_tree<-function(data, current_height, max_height, kurtosis=TRUE){
+ConstructTree<-function(data, current_height, max_height, kurtosis=TRUE){
   
   if(current_height==0){
     output_df<<-unique(data)
@@ -767,13 +768,13 @@ construct_tree<-function(data, current_height, max_height, kurtosis=TRUE){
 #'
 #' @export
 
-Iso_forest<-function(data, num_trees, max_height, subsample_count=nrow(data),kurtosis_param=TRUE){
+IsoForest<-function(data, num_trees, max_height, subsample_count=nrow(data),kurtosis_param=TRUE){
   results_df<-unique(data)
   results_df$avg_height<-rep(-1, nrow(results_df))
   tree_counter<-0
   while(tree_counter<num_trees) {
     random_subsample<-data[sample(1:nrow(data), min(subsample_count, nrow(data))), ,drop=FALSE]
-    tree<-construct_tree(random_subsample, 0, max_height,kurtosis=kurtosis_param)
+    tree<-ConstructTree(random_subsample, 0, max_height,kurtosis=kurtosis_param)
     for(i in 1:nrow(tree)){
       matched_logical<-do.call(paste0, results_df[,1:ncol(data), drop=FALSE]) %in% do.call(paste0, tree[i,1:ncol(data), drop=FALSE])
       if(results_df$avg_height[matched_logical]==-1){
