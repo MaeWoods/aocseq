@@ -15,7 +15,7 @@
 #' @param goi.threshold Quantile that determines high counts per cell.
 #' @param TCR True or false if true, adds amino acid sequence of TCR if cell.type is set to cdr3_na.
 #' @param index.control.input Index of the control sequencing sample for each condition.
-#' @param conditions Number of experiments within ClonalData object
+#' @param conditions Number of experiments within cell.data object.
 #' @param path String. Directory of the table output.
 #' @param names.spreadsheet List. Control and sample names.
 #' @param preset Bool. If set to 1, the control is part of the dataset. If 0, a threshold value for each condition must be set.

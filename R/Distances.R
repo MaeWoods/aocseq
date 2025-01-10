@@ -9,17 +9,17 @@
 #' used to construct the distance and output path for plotting and storing the mean distance per cell type. 
 #' Other parameters are listed for debugging, but can be left as default values.
 #'
-#' @param output.array A Seurat object containing cells that are to be assigned an Rscore.
-#' @param reference.data Matrix of doubles. Reference data used to calculate the Rscore.
+#' @param output.array A Seurat object containing cells that are to be assigned a score.
+#' @param reference.data Matrix. Reference data used to score cells.
 #' @param gene.list Vector. List of genes in the gene signature.
 #' @param cell.types Vector. List of cell types for classification.
 #' @param distance Can be set to 0,1,2 or 3. Choice of 0 returns the Mahalanobis distance, 1 returns the taxicab distance, 2 returns the z-score and 3 returns the isolation forest distance. 
 #' @param scramble Bool. To asses the effect of the gene signature on the Rscore, select a random set of genes and compute their distance from the reference data.
-#' @param withSCT Print progress bars and output
-#' @param ntrees Print progress bars and output
-#' @param maxheight Print progress bars and output
-#' @param PRINT True or false
-#' @param file.path path to save metadata as spreadsheet if PRINT is set to TRUE
+#' @param withSCT True or False. Default=False. If TRUE, classification is made on sctransform data.
+#' @param ntrees Number of trees used for the isolation forest algorithm.
+#' @param maxheight Maximum height of the tree used for the isolation forest algorithm.
+#' @param PRINT True or false. If true results will be saved to save.dir.
+#' @param save.dir path to save metadata as spreadsheet if PRINT is set to TRUE.
 #' @param verbose Print progress bars and output
 #' @return A Seurat object containing aocseq cell classification metadata.
 #' @concept Single cell analysis
@@ -36,7 +36,7 @@ ClassifyCells <- function(
     ntrees=10,
     maxheight=20,
     PRINT=FALSE,
-    file.path=".",
+    save.dir=".",
     verbose = TRUE
 ){
 
@@ -216,7 +216,7 @@ ClassifyCells <- function(
   }
   
   if(PRINT){
-    write_xlsx(data.frame(output.array@meta.data),file.path)
+    write_xlsx(data.frame(output.array@meta.data),save.dir)
   }
   
   return(output.array)
@@ -309,10 +309,10 @@ CellTypeLoop<-function(
   return(df)
 }
 
-#' This function normalizes the data from the R implementation of the isolation forest
+#' This function normalizes the data return by the aocseq R implementation of the isolation forest algorithm.
 #'
-#' @param df A data frame containing isolation forest distances
-#' @return Normalized values
+#' @param df A data frame containing isolation forest distances.
+#' @return Normalized values.
 #' @concept Routine functions
 #'
 #' @export
@@ -342,7 +342,7 @@ SetCellType<-function(
 }
 
 #' Return a data frame of meta data associated with single cell data sets that
-#' contains a distance from a reference
+#' contains a distance from a reference.
 #'
 #' This function will return the percentage of cells that are outliers when compared to a reference data set.
 #'

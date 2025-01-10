@@ -1,6 +1,7 @@
 #'This is a copy of DEsingle that was lifted from the orginal package, see 
-#'https://bioconductor.org/packages/release/bioc/html/DEsingle.html
-#'and included in the aocseq package with modifications for package compatibility
+#'DOI: 10.18129/B9.bioc.DEsingle 
+#'It is included in the aocseq package with modifications for package compatibility.
+#'For information on the function, see the comment pasted from the tool.
 #' DEsingle: Detecting differentially expressed genes from scRNA-seq data
 #' This function is used to detect differentially expressed genes between two specified groups of cells in a raw read counts matrix of single-cell RNA-seq (scRNA-seq) data. It takes a non-negative integer matrix of scRNA-seq raw read counts or a \code{SingleCellExperiment} object as input. So users should map the reads (obtained from sequencing libraries of the samples) to the corresponding genome and count the reads mapped to each gene according to the gene annotation to get the raw read counts matrix in advance.
 #' @param counts A non-negative integer matrix of scRNA-seq raw read counts or a \code{SingleCellExperiment} object which contains the read counts matrix. The rows of the matrix are genes and columns are samples/cells.
@@ -687,12 +688,12 @@ DEsingle <- function(counts, group, goi, parallel = FALSE, BPPARAM = bpparam()){
 #' height at which each data point becomes "isolated" (reaches an external node)
 #' or the max_height.
 #' 
-#' @param data a numerical data frame
-#' @param current_height a parameter which tracks the current height of a given construct_tree instance, allows for recursive calling of the function
-#' @param max_height the maximum height the tree will grow to before stopping
-#' @param kurtosis splits the data based on the kurtosis over the maximum gene distribution across the cells in the input data.
+#' @param data a numerical data frame.
+#' @param current_height A parameter which tracks the current height of a given construct_tree instance, allows for recursive calling of the function.
+#' @param max_height The maximum height the tree will grow to before stopping
+#' @param kurtosis True or False. If set to TRUE, kurtosis splits the data based on the kurtosis over the maximum gene distribution across the cells in the input data.
 #' 
-#' @return a data frame containing the data for each unique point in the input data and the height at which that point was isolated
+#' @return A data frame containing the data for each unique point in the input data and the height at which that point was isolated.
 #' @concept Routine functions
 #'
 #' @export
@@ -757,14 +758,14 @@ ConstructTree<-function(data, current_height, max_height, kurtosis=TRUE){
 #%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 #' Build many trees on samples from data and average the heights
 #' 
-#' @param data a numerical data frame
-#' @param num_trees the number of trees to build and average over
-#' @param max_height the maximum height each tree will grow to before stopping
-#' @param subsample_count the size of the random sample that a tree will be built on. Cannot be larger than the number of rows in the data
-#' @param kurtosis_param splits the data based on the kurtosis over the maximum gene distribution across the cells in the input data.
+#' @param data A numerical data frame.
+#' @param num_trees The number of trees to build and average over.
+#' @param max_height The maximum height each tree will grow to before stopping.
+#' @param subsample_count The size of the random sample that a tree will be built on. Cannot be larger than the number of rows in the data.
+#' @param kurtosis_param True or False. If set to TRUE, kurtosis_param splits the data based on the kurtosis over the maximum gene distribution across the cells in the input data.
 #' 
-#' @return a data frame containing the data for each unique point in the input data and the average height at which that point was isolated
-#' @concept Rutine functions
+#' @return A data frame containing the data for each unique point in the input data and the average height at which that point was isolated.
+#' @concept Routine functions
 #'
 #' @export
 
@@ -799,7 +800,7 @@ IsoForest<-function(data, num_trees, max_height, subsample_count=nrow(data),kurt
 #' Combine single cell data and annotate with cell labels based on functionality
 #'
 #' This function will read in Seurat objects that have been processed with aocseq,
-#' and accompanying annotation tables to classify annotation.tab using distance scores.
+#' and accompanying annotation tables to classify cell types listed in annotation.tab using Bayesian inference and distance scores.
 #' Takes as input gene expression from scRNAseq and VDJ enrichment. Outputs a classification table
 #' that lists samples and each clonotype or cell type and the classification.
 #'

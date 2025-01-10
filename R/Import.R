@@ -12,16 +12,21 @@
 #%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 #'
 #' Calculate the posterior probabilities (soft labels) that each component
-#' has to each data point.
+#' has to each data point. Iterative function for the expectation maximization (EM) algorithm.
 #'
 #' @title EStep
-#' @param sd.vector Vector containing the standard deviations of each component
-#' @param sd.vector Vector containing the mean of each component
-#' @param alpha.vector Vector containing the mixing weights  of each component
-#' @return Named list containing the loglik and posterior.df
+#' @param sd.vector Vector containing the standard deviations of each component.
+#' @param sd.vector Vector containing the mean of each component.
+#' @param alpha.vector Vector containing the mixing weights  of each component.
+#' @return Named list containing the loglik and posterior.df.
 #' @concept Routine functions
 #' @export
-EStep <- function(x, mu.vector, sd.vector, alpha.vector) {
+EStep <- function(
+    x, 
+    mu.vector, 
+    sd.vector, 
+    alpha.vector) {
+  
   comp1.prod <- dnorm(x, mu.vector[1], sd.vector[1]) * alpha.vector[1]
   comp2.prod <- dnorm(x, mu.vector[2], sd.vector[2]) * alpha.vector[2]
   sum.of.comps <- comp1.prod + comp2.prod
@@ -37,7 +42,7 @@ EStep <- function(x, mu.vector, sd.vector, alpha.vector) {
 
 #' Maximization Step of the EM Algorithm
 #'
-#' Update the Component Parameters
+#' Update the Component Parameters. Iterative function for the expectation maximization (EM) algorithm.
 #'
 #' @param x Input data.
 #' @param posterior.df Posterior probability data.frame.
@@ -45,8 +50,11 @@ EStep <- function(x, mu.vector, sd.vector, alpha.vector) {
 #' @return Named list containing the mean (mu), variance (var), and mixing weights (alpha) for each component.
 #' @concept Routine functions
 #' @export
-MStep <- function(x, posterior.df
+MStep <- function(
+    x, 
+    posterior.df
 ){
+  
   comp1.n <- sum(na.omit(posterior.df[, 1]))
   comp2.n <- sum(na.omit(posterior.df[, 2]))
 
@@ -71,19 +79,20 @@ MStep <- function(x, posterior.df
 #'
 #' Demultiplex arbitrary number of hashtags
 #'
-#' @param s.name Input data. 10x object with hashtags
-#' @param data Input data. 10x object with hashtags
-#' @param hashtag.index list containing positions of hashtags to be demultiplexed
-#' @param nameshashtags Subsets of the sample for new orig.ident
-#' @param set.col.name Subsets of the sample for new orig.ident
-#' @param Seurat_Object Name of the sample
+#' @param s.name This function creates a 10X genomics Seurat object. s.name sets the name of the project.
+#' @param data Input data. 10x genomics Seurat object with hashtag antibodies.
+#' @param hashtag.index List containing positions of hashtags to be de-multiplexed.
+#' @param nameshashtags Sets the values of the sample for the new orig.ident to be added to the de-multiplexed Seurat object.
+#' @param set.col.name Sets the column name to be added to the de-multiplexed Seurat object.
+#' @param Seurat_Object True or false. Default is FALSE and assumes input data is a data frame or matrix.
 #' 
 #' @return A Seurat object that has been split by hastagged demultiplexing. 
 #' @concept Statistical inference
 #' @export
 GMMDemux<-function(
     s.name,
-    data, hashtag.index, 
+    data, 
+    hashtag.index, 
     nameshashtags, 
     set.col.name='Hashtags',
     Seurat_Object=FALSE
@@ -311,8 +320,8 @@ GMMDemux<-function(
 #' @param nFeature_RNA_upper Threshold for the maximum number of unique gene identifiers detected in a single cell.
 #' @param nvariable_features Threshold for the maximum total number of unique gene identifiers detected in a single cell for dimension reduction.
 #' @param percent.mt_upper Threshold for the maximum percentage of unique mitochondrial gene identifiers detected in a single cell.
-#' @param verbose Print progress bars and output
-#' @param QC_plots Print progress bars and output
+#' @param verbose Print progress bars and output.
+#' @param QC_plots Print progress bars and output.
 #'
 #' @return A Seurat object list containing metadata and VDJ annotations.
 #' @concept Annotation & quality control

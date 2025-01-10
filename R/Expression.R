@@ -3,15 +3,15 @@
 #%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 #' Subsets a SEURAT object based on a list of meta data for the CD4 and CD8 subsets
 #'
-#' This function will read in Seurat objects processed by traceseq::AnnotateClonotypes
-#' or any other software based on cell annotation and subset the SEURAT array accordingly
+#' This function will read in Seurat objects processed by aocseq::AnnotateCellTypes
+#' or any other software based on cell annotation and subset the array accordingly
 #'
-#' @param cell.data A Seurat object.
+#' @param cell.data A Seurat object containing single cell RNA sequencing data.
 #' @param expression Choice of "high" or "unassigned".
-#' @param phenotype CD4 or CD8 clasification.
-#' @param tcrseq List of TCRs to mark clonotypes included in the analysis.
+#' @param phenotype CD4 or CD8 classification.
+#' @param cell.types List of cell types to subset single cells included in the analysis.
 #' @param goi_v Gene of interest.
-#' @return A subset of a Seurat object processed with aocseq.
+#' @return A subset of a Seurat object.
 #' @concept Single cell analysis
 #' @export
 #'
@@ -19,15 +19,15 @@ GetSpecificCells <- function(
     cell.data,
     expression,
     phenotype,
-    tcrseq,
+    cell.types,
     goi_v
 ){
   if(phenotype=="CD8"){
-    pindx=match("CD8cells",names(subset(cell.data,(`cdr3_na` %in% tcrseq))@meta.data))
-    entry=match(paste("Threshold_",goi_v,sep=""),names(subset(cell.data,(`cdr3_na` %in% tcrseq))@meta.data))
-    if(length(subset(subset(cell.data,(`cdr3_na` %in% tcrseq))@meta.data[[pindx]],subset(cell.data,(`cdr3_na` %in% tcrseq))@meta.data[[pindx]]=="1"))>0){
-      if(length(subset(subset(cell.data,(`cdr3_na` %in% tcrseq) & cell.data@meta.data[[pindx]]=="1")@meta.data[[entry]],subset(cell.data,(`cdr3_na` %in% tcrseq) & cell.data@meta.data[[pindx]]=="1")@meta.data[[entry]]==expression))>0){
-        return(subset(cell.data,(cell.data@meta.data[[entry]]==(expression)) & cell.data@meta.data[[pindx]]=="1" & (`cdr3_na` %in% tcrseq)))
+    pindx=match("CD8cells",names(subset(cell.data,(`cdr3_na` %in% cell.types))@meta.data))
+    entry=match(paste("Threshold_",goi_v,sep=""),names(subset(cell.data,(`cdr3_na` %in% cell.types))@meta.data))
+    if(length(subset(subset(cell.data,(`cdr3_na` %in% cell.types))@meta.data[[pindx]],subset(cell.data,(`cdr3_na` %in% cell.types))@meta.data[[pindx]]=="1"))>0){
+      if(length(subset(subset(cell.data,(`cdr3_na` %in% cell.types) & cell.data@meta.data[[pindx]]=="1")@meta.data[[entry]],subset(cell.data,(`cdr3_na` %in% cell.types) & cell.data@meta.data[[pindx]]=="1")@meta.data[[entry]]==expression))>0){
+        return(subset(cell.data,(cell.data@meta.data[[entry]]==(expression)) & cell.data@meta.data[[pindx]]=="1" & (`cdr3_na` %in% cell.types)))
       }
       else{
         return(0)
@@ -38,11 +38,11 @@ GetSpecificCells <- function(
     }
   }
   else if(phenotype=="CD4"){
-    pindx=match("CD4cells",names(subset(cell.data,(`cdr3_na` %in% tcrseq))@meta.data))
-    entry=match(paste("Threshold_",goi_v,sep=""),names(subset(cell.data,(`cdr3_na` %in% tcrseq))@meta.data))
-    if(length(subset(subset(cell.data,(`cdr3_na` %in% tcrseq))@meta.data[[pindx]],subset(cell.data,(`cdr3_na` %in% tcrseq))@meta.data[[pindx]]=="1"))>0){
-      if(length(subset(subset(cell.data,(`cdr3_na` %in% tcrseq) & cell.data@meta.data[[pindx]]=="1")@meta.data[[entry]],subset(cell.data,(`cdr3_na` %in% tcrseq) & cell.data@meta.data[[pindx]]=="1")@meta.data[[entry]]==expression))>0){
-        return(subset(cell.data,cell.data@meta.data[[entry]]==expression & cell.data@meta.data[[pindx]]=="1" & (`cdr3_na` %in% tcrseq)))
+    pindx=match("CD4cells",names(subset(cell.data,(`cdr3_na` %in% cell.types))@meta.data))
+    entry=match(paste("Threshold_",goi_v,sep=""),names(subset(cell.data,(`cdr3_na` %in% cell.types))@meta.data))
+    if(length(subset(subset(cell.data,(`cdr3_na` %in% cell.types))@meta.data[[pindx]],subset(cell.data,(`cdr3_na` %in% cell.types))@meta.data[[pindx]]=="1"))>0){
+      if(length(subset(subset(cell.data,(`cdr3_na` %in% cell.types) & cell.data@meta.data[[pindx]]=="1")@meta.data[[entry]],subset(cell.data,(`cdr3_na` %in% cell.types) & cell.data@meta.data[[pindx]]=="1")@meta.data[[entry]]==expression))>0){
+        return(subset(cell.data,cell.data@meta.data[[entry]]==expression & cell.data@meta.data[[pindx]]=="1" & (`cdr3_na` %in% cell.types)))
       }
       else{
         return(0)
@@ -53,10 +53,10 @@ GetSpecificCells <- function(
     }
   }
   else{
-    entry=match(paste("Threshold_",goi_v,sep=""),names(subset(cell.data,(`cdr3_na` %in% tcrseq))@meta.data))
-    if(length(subset(subset(cell.data,(`cdr3_na` %in% tcrseq))@meta.data[[entry]],subset(cell.data,(`cdr3_na` %in% tcrseq))@meta.data[[entry]]==expression))>0){
+    entry=match(paste("Threshold_",goi_v,sep=""),names(subset(cell.data,(`cdr3_na` %in% cell.types))@meta.data))
+    if(length(subset(subset(cell.data,(`cdr3_na` %in% cell.types))@meta.data[[entry]],subset(cell.data,(`cdr3_na` %in% cell.types))@meta.data[[entry]]==expression))>0){
 
-      return(subset(cell.data,cell.data@meta.data[[entry]]==expression & (`cdr3_na` %in% tcrseq)))
+      return(subset(cell.data,cell.data@meta.data[[entry]]==expression & (`cdr3_na` %in% cell.types)))
     }
     else{
       return(0)
@@ -65,18 +65,22 @@ GetSpecificCells <- function(
 }
 
 
-#' Export differential gene expression from several different samples and phenotypes
+#' This function saves differential gene expression from multiple subsets from samples that have been processed and classified by aocseq.
 #'
 #' This function will take a set of annotation spreadsheets and export differential
 #' expression between different cell types labelled by their marker genes
-#' Currently the phenotypic separation is CD4 and CD8, but the reader is encouraged
-#' to generate as many subsets as needed for downstream analysis
+#' Currently the phenotypic separation is CD4 and CD8 T cell phenotypes, but the user is encouraged
+#' to generate as many subsets as needed for downstream analysis.
 #'
 #' @param cell.data A Seurat object pre-processed with aocseq::CombineData.
-#' @param clonotype.path Character array. Directory of an aocseq clonotype annotation table.
-#' @param save.dir Directory for storing differentially expressed genes.
+#' @param annotation.path Character array. Directory of an aocseq clonotype annotation table.
+#' @param save.dir Directory for storing differential genes.
 #' @param goi Character array. Gene name, a marker of interest.
-#' @param verbose Print progress
+#' @param FClim Fold change cutoff for differential genes.
+#' @param specific.pval If cells are classified by a zero inflated negative binomial (ZINB) model, sets the significance cutoff for specificity in each cell subset specified by the cell type metadata.
+#' @param bystander.pval Same parameter as used for specific.pval, but sets the threshold for bystanders.
+#' @param set.min.pct Same set.min.pct in Seurat FindMarkers function.
+#' @param logfc.threshold Same logfc.threshold in Seurat FindMarkers function.
 #'
 #' @return return an assay containing predicted expression value in the data
 #' slot
@@ -84,7 +88,7 @@ GetSpecificCells <- function(
 #' @export
 GetGeneSignature <- function(
     cell.data,
-    clonotype.path,
+    annotation.path,
     save.dir,
     goi,
     FClim=0,
@@ -93,7 +97,7 @@ GetGeneSignature <- function(
     set.min.pct=0.25,
     logfc.threshold = 0){
 
-  Classification=data.frame(read.csv(clonotype.path))
+  Classification=data.frame(read.csv(annotation.path))
   #-----------------------------------------#
   #-----Find specific TCRs based on goi-----#
   #-----------------------------------------#
