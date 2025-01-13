@@ -801,7 +801,7 @@ IsoForest<-function(data, num_trees, max_height, subsample_count=nrow(data),kurt
 #'
 #' This function will read in Seurat objects that have been processed with aocseq,
 #' and accompanying annotation tables to classify cell types listed in annotation.tab using Bayesian inference and distance scores.
-#' Takes as input gene expression from scRNAseq and VDJ enrichment. Outputs a classification table
+#' Takes as input gene expression UMI counts from single cell RNA sequencing and VDJ enrichment. Outputs a classification table
 #' that lists samples and each clonotype or cell type and the classification.
 #'
 #' @param cell.data A seurat object. Pre-processed with aocseq.
@@ -1115,25 +1115,33 @@ ClassifyCellTypes <- function(
   else{
     if(method=="Mahalanobis"){
       inputdistance=0
+      ClassifyCells(cell.data,signature.ref,goi,distance=inputdistance)
     }
     else if(method=="z-score"){
       inputdistance=2
+      ClassifyCells(cell.data,signature.ref,goi,distance=inputdistance)
     }
     else if(method=="Taxi cab"){
       inputdistance=1
+      ClassifyCells(cell.data,signature.ref,goi,distance=inputdistance)
     }
     else if(method=="isoForest"){
       inputdistance=3
-      ClassifyCells(cell.data,cell.arrayPFlog1pPF,signature.ref,Glist,distance=inputdistance)
+      ClassifyCells(cell.data,signature.ref,goi,distance=inputdistance)
     }
     path=paste(path,paste(paste(goi,"ClassificationTable",sep=""),".csv",sep=""),sep="")
     CloneList=subset(annotation.tab,avg>3)$Clone..nucleic.
     ClassArray=data.frame(matrix(ncol=(((length(cell.data)))+2),nrow=length(CloneList)))
     names.sample=0
+    if(method=="isoForest"){
     for(j in 1:(length(cell.data)-1)){
-      names.sample=append(names.sample,c(
-        paste(levels(factor(cell.data[[j]]@meta.data$orig.ident)),".Rscore",sep="")))
-
+      names.sample=append(names.sample,c(paste(levels(factor(cell.data[[j]]@meta.data$orig.ident)),".height",sep="")))
+    }
+    }
+    else{
+      for(j in 1:(length(cell.data)-1)){
+        names.sample=append(names.sample,c(paste(levels(factor(cell.data[[j]]@meta.data$orig.ident)),".Rscore",sep="")))
+      }
     }
     names.sample=names.sample[-1]
     names.sample=append(names.sample,c("cell.type","phenotype"))
