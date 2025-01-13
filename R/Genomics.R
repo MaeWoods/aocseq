@@ -29,7 +29,7 @@ GetTCR <- function(
   for(s in 1:length(barcodes)){
     CHR1 <- lapply(result, function(x) { x$barcode == barcodes[s] })
     
-    len.cells=dim(contig.annoations)[2]
+    len.cells=dim(contig.annoations)[1]
     indicies=0
     for(k in 1:len.cells){
       if(length(CHR1[[k]])==0){
@@ -48,9 +48,12 @@ GetTCR <- function(
   frag.number = vector(mode = "list", length = length.fragments)
     for(k in 1:length.fragments){
       frag.number[[k]]=result[[indicies[k]]]
-      capture.output(frag.number[[k]], file = append(save.dir,append(append(append(append("/paste(Clonotype",4,sep=""),"_",sep=""),s,sep=""),".txt",sep=""),sep=""), append = TRUE)
+      capture.output(frag.number[[k]], file = paste(save.dir,paste(paste(paste("/paste(Cell",s,sep=""),"_Chain",sep=""),k,sep=""),".txt",sep=""), append = TRUE)
     }
   
   }
 
 }
+
+
+
