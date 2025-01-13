@@ -23,7 +23,6 @@ MakeReference <- function(
     cell.data,
     gene.list,
     cell.type.list,
-    celltype=cdr3_na,
     threshold=0.975,
     n.inlist=10,
     cellcycle=FALSE,
@@ -44,6 +43,7 @@ MakeReference <- function(
   cell.data.norm = vector(mode = "list", length = n.samples)
 
   for(g in 1:n.samples){
+    cell.data[[g]]=SetCellType(cell.data[[g]],cell.data[[g]]@meta.data$cdr3_na,"celltype")
     cell.data.norm[[g]]=as.matrix(cell.data[[g]]@assays$RNA@counts)
     cell.data.norm[[g]]=log(1+(cell.data.norm[[g]]/mean(colSums(cell.data.norm[[g]]))))
     cell.data.norm[[g]]=cell.data.norm[[g]]/mean(colSums(cell.data.norm[[g]]))
