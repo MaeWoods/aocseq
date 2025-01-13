@@ -335,9 +335,10 @@ NormalizationScore<-function(
 #' @export
 SetCellType<-function(
     cell.data, 
-    cell.types
+    cell.types,
+    col.name="celltype"
     ){
-  cell.data=AddMetaData(cell.data,cell.types,"celltype")
+  cell.data=AddMetaData(cell.data,cell.types,col.name)
   return(cell.data)
 }
 
