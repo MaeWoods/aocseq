@@ -48,7 +48,7 @@ GetTCR <- function(
   frag.number = vector(mode = "list", length = length.fragments)
     for(k in 1:length.fragments){
       frag.number[[k]]=result[[indicies[k]]]
-      capture.output(frag.number[[k]], file = paste(save.dir,paste(paste(paste("/paste(Cell",s,sep=""),"_Chain",sep=""),k,sep=""),".txt",sep=""), append = TRUE)
+      capture.output(frag.number[[k]], file = paste(save.dir,paste(paste(paste("Cell",s,sep=""),"_Chain",sep=""),k,sep=""),".txt",sep=""), append = TRUE)
     }
   
   }
