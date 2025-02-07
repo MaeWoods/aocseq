@@ -206,7 +206,7 @@ ClassifyCells <- function(
   }
   else if(distance==3){
     
-    cell.types=levels(factor(output.array@meta.data$celltype))
+    
     
     cell_outliers<-CellTypeLoop(output.array,cell.types,reference.data,gene.list,
               ntrees,maxheight,subsample.count=ncol(reference.data)+1)
@@ -250,16 +250,21 @@ CellTypeLoop<-function(
     solver=TRUE,
     subsample.count=ncol(reference.data)+1){
   
+  
   if(solver){
+    n_genes<-length(genes)
+
   unique_types<-levels(factor(cell.types))
+  #print(unique_types)
   df<-data.frame(clones=unique_types, outlier_fraction=vector(mode = 'numeric', length = length(unique_types)))
   for (i in 1:length(unique_types)) {
-    
+    #print(unique_types[i])
     ##Select only counts from signature genes
-    cell.data=as.matrix(subset(cell.data,`celltype`==unique_types[i])@assays$SCT@counts[genes,])
+    cell.data.mat=as.matrix(subset(cell.data,cdr3_na==unique_types[i])@assays$SCT@counts[genes,])
     ##Set clonotype score will hold normalized heights for all cells in the clonotype
-    numcells=dim(cell.data)[2]
-    test_df<-as.data.frame(cbind(as.matrix(reference.data), cell.data[, 1]))
+    numcells=dim(cell.data.mat)[2]
+    test_df<-as.data.frame(cbind(as.matrix(reference.data), cell.data.mat[, 1]))
+    colnames(test_df)<-c(colnames(as.matrix(reference.data)), colnames(cell.data.mat)[1])
     TestCells=unname(as.matrix(test_df))
     Tref=rep(0,dim(TestCells)[1]*dim(TestCells)[2])
     Tsg=rep(0,dim(TestCells)[2])
@@ -270,7 +275,7 @@ CellTypeLoop<-function(
       }
     }
     
-    allcellsF=unname(as.matrix(as.data.frame(as.matrix(cell.data))))
+    allcellsF=unname(as.matrix(as.data.frame(as.matrix(cell.data.mat))))
     Tcd=rep(0,dim(allcellsF)[1]*dim(allcellsF)[2])
     Tsg2=rep(0,numcells)
     for(s in 1:dim(allcellsF)[1]){
@@ -293,14 +298,15 @@ CellTypeLoop<-function(
     as.double(Tsg),as.double(Tsg),as.double(Tsg),maxkurtosis,as.double(Tcd),as.double(Tsg2))
     
     SetClonotypeScores=clone_result
-    IsodataFrame$isoF[f]=mean(clone_result)
+    
+    df$outlier_fraction[i]=mean(clone_result)
   }
-  df$outlier_fraction = IsodataFrame$isoF
+  
   }
   else{
     for (i in 1:length(unique_types)) {
     print(paste0('processing ', unique_types[i]))
-    select_clone<-subset(cell.data, cdr3_na==unique_types[i])
+    select_clone<-subset(cell.data.mat, cdr3_na==unique_types[i])
     select_clone_mat<-select_clone@assays$SCT@data
     clone_result<-PercentOutlier(select_clone_mat, reference.data, genes, ntrees, maxheight, subsample.count)
     df[i,'outlier_fraction']<-clone_result$outlier_fraction
@@ -406,5 +412,34 @@ PercentOutlier<-function(
     clone_AS=mean(normalization_score_list), 
     outlier_fraction=num_outliers/numcells)
   )
+  
+}
+
+AddDistances<-function(
+    cell.data,
+    signature.ref,
+    glist,
+    cell.types,
+    distance=0,
+    scramble=FALSE,
+    verbose = TRUE
+){
+  
+  Glist=glist
+  G1l=match(Glist,row.names(cell.data@assays$RNA@counts))
+  SPFlog1pPF=as.matrix(cell.data@assays$RNA@counts)
+  PF=log(1+(t((t(SPFlog1pPF)/mean(colSums(SPFlog1pPF))))))
+  PFlog1pPF=t(t(PF)/mean(colSums(PF)))
+  fullPFlog1pPF=PFlog1pPF
+  cell.arrayPFlog1pPF=fullPFlog1pPF[G1l,colnames(cell.data)]
+  cell.arrayPFlog1pPF <- replace(cell.arrayPFlog1pPF, is.na(cell.arrayPFlog1pPF), 0)
+  
+  cell.data=ClassifyCells(cell.arrayPFlog1pPF,signature.ref,Glist,cell.types,distance)
+  
+  #if(PRINT){
+  #  write_xlsx(data.frame(cell.data@meta.data),file.path)
+  #}
+  return(cell.data)
+  
   
 }

@@ -821,7 +821,7 @@ IsoForest<-function(data, num_trees, max_height, subsample_count=nrow(data),kurt
 ClassifyCellTypes <- function(
     cell.data,
     annotation.tab,
-    cell.type="cdr3_na",
+    cell.type="",
     within.sample=FALSE,
     method="ZINB",
     goi=c("IFNG"),
@@ -835,27 +835,41 @@ ClassifyCellTypes <- function(
   if(method=="ZINB"){
   path=paste(paste(path,"/",sep=""),paste(paste(goi[1],"ClassificationTable",sep=""),".csv",sep=""),sep="")
   print(path)
-  CloneList=subset(annotation.tab,avg>3)$`Clone (nucleic)`
+  CloneList=annotation.tab
+  #CloneList=subset(annotation.tab,avg>3)$`Clone (nucleic)`
   ClassArray=data.frame(matrix(data="-",ncol=((4*(length(cell.data)-1))+2),nrow=length(CloneList)))
   names.sample=0
   if(within.sample==FALSE){
-  for(j in 1:(length(cell.data)-1)){
-  names.sample=append(names.sample,c(
-    paste(levels(factor(cell.data[[1]]@meta.data$orig.ident)),".status",sep=""),
-    paste(levels(factor(cell.data[[1+j]]@meta.data$orig.ident)),".status",sep=""),
-    paste(levels(factor(cell.data[[1]]@meta.data$orig.ident)),".abundance",sep=""),
-    paste(levels(factor(cell.data[[1+j]]@meta.data$orig.ident)),".abundance",sep="")
-  ))
+    if(length(cell.data)>1){
+      for(j in 1:(length(cell.data))){
+        names.sample=append(names.sample,c(
+          paste(levels(factor(cell.data[[1]]@meta.data$orig.ident)),".status",sep=""),
+          paste(levels(factor(cell.data[[1+j]]@meta.data$orig.ident)),".status",sep=""),
+          paste(levels(factor(cell.data[[1]]@meta.data$orig.ident)),".abundance",sep=""),
+          paste(levels(factor(cell.data[[1+j]]@meta.data$orig.ident)),".abundance",sep="")
+        ))
+    }
+ 
 
+    }
+    else{
+      names.sample=append(names.sample,c(
+        paste(levels(factor(cell.data$orig.ident)),".status",sep=""),
+        paste(levels(factor(cell.data$orig.ident)),".status",sep=""),
+        paste(levels(factor(cell.data$orig.ident)),".abundance",sep=""),
+        paste(levels(factor(cell.data$orig.ident)),".abundance",sep="")
+      ))
+    }
   }
-  }else{
+  else{
+    ####question 1####
     ClassArray=data.frame(matrix(data="-",ncol=4+2,nrow=length(CloneList)))
 
       names.sample=append(names.sample,c(
         paste("sample",".status",sep=""),
-        paste(levels(factor(cell.data[[1]]@meta.data$orig.ident)),".status",sep=""),
+        paste(levels(factor(cell.data$orig.ident)),".status",sep=""),
         paste("sample",".abundance",sep=""),
-        paste(levels(factor(cell.data[[1]]@meta.data$orig.ident)),".abundance",sep="")
+        paste(levels(factor(cell.data$orig.ident)),".abundance",sep="")
       ))
 
 
@@ -864,7 +878,7 @@ ClassifyCellTypes <- function(
   names.sample=append(names.sample,c("cell.type","phenotype"))
   names(ClassArray) <- names.sample
 
-  df_speed=cell.data[[1]]@meta.data
+  df_speed=cell.data[[]]
 
 
   if(within.sample==FALSE){
@@ -882,113 +896,219 @@ ClassifyCellTypes <- function(
     }else{
       ClassArray[g,(LE)]="-"
     }
-
-    for(j in 1:(length(cell.data)-1)){
-    TCR1=CloneList[g]
-    GOIUS=match(goi,row.names(cell.data[[1]]@assays$RNA@counts))
-    GOISTIM=match(goi,row.names(cell.data[[1+j]]@assays$RNA@counts))
-    if((length(intersect(cell.data[[1]]@meta.data$cell.type,TCR1))>0)&&
-       (length(intersect(cell.data[[1+j]]@meta.data$cell.type,TCR1))>0)){
-
-      if((dim(subset(cell.data[[1]],cell.type %in% TCR1))[2]>2)&&
-         (dim(subset(cell.data[[1+j]],cell.type %in% TCR1))[2]>2)){
-
-        if(length(goi)==1){
-          mats=cbind((t(as.matrix(subset(cell.data[[1]],cell.type %in% TCR1)@assays$RNA@counts[GOIUS,]))),
-                     (t(as.matrix(subset(cell.data[[1+j]],cell.type %in% TCR1)@assays$RNA@counts[GOISTIM,]))))
-          grouper=c(rep(1,dim(t(as.matrix(subset(cell.data[[1]],cell.type %in% TCR1)@assays$RNA@counts[GOIUS[1],])))[2]),rep(2,dim(t(as.matrix(subset(cell.data[[1+j]],cell.type %in% TCR1)@assays$RNA@counts[GOISTIM[1],])))[2]))
-
-          if(sum(mats!=0)>5){
-            output1=DEsingle(mats,factor(grouper),goi)
-            ThetaIDX=which.min(output1$pvalue_LR2)
-            MuIDX=which.min(output1$pvalue_LR3)
-            if((min(output1$pvalue_LR2)<0.05)&&(min(output1$pvalue_LR2)>10^-(5))){
-              if(output1$theta_1[ThetaIDX]<output1$theta_2[ThetaIDX]){
-                ClassArray[g,4*(j-1)+1]=output1$pvalue_LR2[ThetaIDX]
-                ClassArray[g,4*(j-1)+2]=="-"
-              }else if(output1$theta_2[ThetaIDX]<output1$theta_1[ThetaIDX]){
-                ClassArray[g,4*(j-1)+1]="-"
-                ClassArray[g,4*(j-1)+2]=output1$pvalue_LR2[ThetaIDX]
+    
+    if(length(cell.data)>1){
+      for(j in 1:(length(cell.data))){
+        TCR1=CloneList[g]
+        GOIUS=match(goi,row.names(cell.data[[1]]@assays$RNA@counts))
+        GOISTIM=match(goi,row.names(cell.data[[1+j]]@assays$RNA@counts))
+        if((length(intersect(cell.data[[1]]$cell.type,TCR1))>0)&&
+           (length(intersect(cell.data[[1+j]]@meta.data$cell.type,TCR1))>0)){
+          
+          if((dim(subset(cell.data[[1]],cell.type %in% TCR1))[2]>2)&&
+             (dim(subset(cell.data[[1+j]],cell.type %in% TCR1))[2]>2)){
+            
+            if(length(goi)==1){
+              mats=cbind((t(as.matrix(subset(cell.data[[1]],cell.type %in% TCR1)@assays$RNA@counts[GOIUS,]))),
+                         (t(as.matrix(subset(cell.data[[1+j]],cell.type %in% TCR1)@assays$RNA@counts[GOISTIM,]))))
+              grouper=c(rep(1,dim(t(as.matrix(subset(cell.data[[1]],cell.type %in% TCR1)@assays$RNA@counts[GOIUS[1],])))[2]),rep(2,dim(t(as.matrix(subset(cell.data[[1+j]],cell.type %in% TCR1)@assays$RNA@counts[GOISTIM[1],])))[2]))
+              
+              if(sum(mats!=0)>5){
+                output1=DEsingle(mats,factor(grouper),goi)
+                ThetaIDX=which.min(output1$pvalue_LR2)
+                MuIDX=which.min(output1$pvalue_LR3)
+                if((min(output1$pvalue_LR2)<0.05)&&(min(output1$pvalue_LR2)>10^-(5))){
+                  if(output1$theta_1[ThetaIDX]<output1$theta_2[ThetaIDX]){
+                    ClassArray[g,4*(j-1)+1]=output1$pvalue_LR2[ThetaIDX]
+                    ClassArray[g,4*(j-1)+2]=="-"
+                  }else if(output1$theta_2[ThetaIDX]<output1$theta_1[ThetaIDX]){
+                    ClassArray[g,4*(j-1)+1]="-"
+                    ClassArray[g,4*(j-1)+2]=output1$pvalue_LR2[ThetaIDX]
+                  }
+                }else if(min(output1$pvalue_LR2)<10^-(5)){
+                  if(output1$theta_1[ThetaIDX]<output1$theta_2[ThetaIDX]){
+                    ClassArray[g,4*(j-1)+1]=output1$pvalue_LR2[ThetaIDX]
+                    ClassArray[g,4*(j-1)+2]="-"
+                  }else if(output1$theta_2[ThetaIDX]<output1$theta_1[ThetaIDX]){
+                    ClassArray[g,4*(j-1)+1]="-"
+                    ClassArray[g,4*(j-1)+2]=output1$pvalue_LR2[ThetaIDX]
+                  }
+                }
+                if((min(output1$pvalue_LR3)<0.05)&&(min(output1$pvalue_LR3)>10^-(5))){
+                  if(output1$mu_1[MuIDX]>output1$mu_2[MuIDX]){
+                    ClassArray[g,4*(j-1)+3]=output1$pvalue_LR3[MuIDX]
+                    ClassArray[g,4*(j-1)+4]="-"
+                  }else if(output1$mu_2[MuIDX]>output1$mu_1[MuIDX]){
+                    ClassArray[g,4*(j-1)+3]="-"
+                    ClassArray[g,4*(j-1)+4]=output1$pvalue_LR3[MuIDX]
+                  }
+                }else if(min(output1$pvalue_LR3)<10^-(5)){
+                  if(output1$mu_1[MuIDX]>output1$mu_2[MuIDX]){
+                    ClassArray[g,4*(j-1)+3]=output1$pvalue_LR3[MuIDX]
+                    ClassArray[g,4*(j-1)+4]="-"
+                  }else if(output1$mu_2[MuIDX]>output1$mu_1[MuIDX]){
+                    ClassArray[g,4*(j-1)+3]="-"
+                    ClassArray[g,4*(j-1)+4]=output1$pvalue_LR3[MuIDX]
+                  }
+                }
               }
-            }else if(min(output1$pvalue_LR2)<10^-(5)){
-              if(output1$theta_1[ThetaIDX]<output1$theta_2[ThetaIDX]){
-                ClassArray[g,4*(j-1)+1]=output1$pvalue_LR2[ThetaIDX]
-                ClassArray[g,4*(j-1)+2]="-"
-              }else if(output1$theta_2[ThetaIDX]<output1$theta_1[ThetaIDX]){
-                ClassArray[g,4*(j-1)+1]="-"
-                ClassArray[g,4*(j-1)+2]=output1$pvalue_LR2[ThetaIDX]
+            }
+            else{
+              mats=cbind((as.matrix(subset(cell.data[[1]],cell.type %in% TCR1)@assays$RNA@counts[GOIUS,])),
+                         (as.matrix(subset(cell.data[[1+j]],cell.type %in% TCR1)@assays$RNA@counts[GOISTIM,])))
+              grouper=c(rep(1,dim(t(as.matrix(subset(cell.data[[1]],cell.type %in% TCR1)@assays$RNA@counts[GOIUS[1],])))[2]),rep(2,dim(t(as.matrix(subset(cell.data[[1+j]],cell.type %in% TCR1)@assays$RNA@counts[GOISTIM[1],])))[2]))
+              if(sum(mats!=0)>5){
+                output1=DEsingle(mats,factor(grouper),goi)
+                ThetaIDX=which.min(output1$pvalue_LR2)
+                MuIDX=which.min(output1$pvalue_LR3)
+                if((min(output1$pvalue_LR2)<0.05)&&(min(output1$pvalue_LR2)>10^-(5))){
+                  if(output1$theta_1[ThetaIDX]<output1$theta_2[ThetaIDX]){
+                    ClassArray[g,4*(j-1)+1]=output1$pvalue_LR2[ThetaIDX]
+                    ClassArray[g,4*(j-1)+2]=="-"
+                  }else if(output1$theta_2[ThetaIDX]<output1$theta_1[ThetaIDX]){
+                    ClassArray[g,4*(j-1)+1]="-"
+                    ClassArray[g,4*(j-1)+2]=output1$pvalue_LR2[ThetaIDX]
+                  }
+                }else if(min(output1$pvalue_LR2)<10^-(5)){
+                  if(output1$theta_1[ThetaIDX]<output1$theta_2[ThetaIDX]){
+                    ClassArray[g,4*(j-1)+1]=output1$pvalue_LR2[ThetaIDX]
+                    ClassArray[g,4*(j-1)+2]="-"
+                  }else if(output1$theta_2[ThetaIDX]<output1$theta_1[ThetaIDX]){
+                    ClassArray[g,4*(j-1)+1]="-"
+                    ClassArray[g,4*(j-1)+2]=output1$pvalue_LR2[ThetaIDX]
+                  }
+                }
+                if((min(output1$pvalue_LR3)<0.05)&&(min(output1$pvalue_LR3)>10^-(5))){
+                  if(output1$mu_1[MuIDX]>output1$mu_2[MuIDX]){
+                    ClassArray[g,4*(j-1)+3]=output1$pvalue_LR3[MuIDX]
+                    ClassArray[g,4*(j-1)+4]="-"
+                  }else if(output1$mu_2[MuIDX]>output1$mu_1[MuIDX]){
+                    ClassArray[g,4*(j-1)+3]="-"
+                    ClassArray[g,4*(j-1)+4]=output1$pvalue_LR3[MuIDX]
+                  }
+                }else if(min(output1$pvalue_LR3)<10^-(5)){
+                  if(output1$mu_1[MuIDX]>output1$mu_2[MuIDX]){
+                    ClassArray[g,4*(j-1)+3]=output1$pvalue_LR3[MuIDX]
+                    ClassArray[g,4*(j-1)+4]="-"
+                  }else if(output1$mu_2[MuIDX]>output1$mu_1[MuIDX]){
+                    ClassArray[g,4*(j-1)+3]="-"
+                    ClassArray[g,4*(j-1)+4]=output1$pvalue_LR3[MuIDX]
+                  }
+                }
               }
-            }
-            if((min(output1$pvalue_LR3)<0.05)&&(min(output1$pvalue_LR3)>10^-(5))){
-              if(output1$mu_1[MuIDX]>output1$mu_2[MuIDX]){
-                ClassArray[g,4*(j-1)+3]=output1$pvalue_LR3[MuIDX]
-                ClassArray[g,4*(j-1)+4]="-"
-              }else if(output1$mu_2[MuIDX]>output1$mu_1[MuIDX]){
-                ClassArray[g,4*(j-1)+3]="-"
-                ClassArray[g,4*(j-1)+4]=output1$pvalue_LR3[MuIDX]
-              }
-            }else if(min(output1$pvalue_LR3)<10^-(5)){
-              if(output1$mu_1[MuIDX]>output1$mu_2[MuIDX]){
-                ClassArray[g,4*(j-1)+3]=output1$pvalue_LR3[MuIDX]
-                ClassArray[g,4*(j-1)+4]="-"
-              }else if(output1$mu_2[MuIDX]>output1$mu_1[MuIDX]){
-                ClassArray[g,4*(j-1)+3]="-"
-                ClassArray[g,4*(j-1)+4]=output1$pvalue_LR3[MuIDX]
-              }
-            }
-          }
-          }
-        else{
-        mats=cbind((as.matrix(subset(cell.data[[1]],cell.type %in% TCR1)@assays$RNA@counts[GOIUS,])),
-                   (as.matrix(subset(cell.data[[1+j]],cell.type %in% TCR1)@assays$RNA@counts[GOISTIM,])))
-        grouper=c(rep(1,dim(t(as.matrix(subset(cell.data[[1]],cell.type %in% TCR1)@assays$RNA@counts[GOIUS[1],])))[2]),rep(2,dim(t(as.matrix(subset(cell.data[[1+j]],cell.type %in% TCR1)@assays$RNA@counts[GOISTIM[1],])))[2]))
-        if(sum(mats!=0)>5){
-          output1=DEsingle(mats,factor(grouper),goi)
-          ThetaIDX=which.min(output1$pvalue_LR2)
-          MuIDX=which.min(output1$pvalue_LR3)
-          if((min(output1$pvalue_LR2)<0.05)&&(min(output1$pvalue_LR2)>10^-(5))){
-            if(output1$theta_1[ThetaIDX]<output1$theta_2[ThetaIDX]){
-              ClassArray[g,4*(j-1)+1]=output1$pvalue_LR2[ThetaIDX]
-              ClassArray[g,4*(j-1)+2]=="-"
-            }else if(output1$theta_2[ThetaIDX]<output1$theta_1[ThetaIDX]){
-              ClassArray[g,4*(j-1)+1]="-"
-              ClassArray[g,4*(j-1)+2]=output1$pvalue_LR2[ThetaIDX]
-            }
-          }else if(min(output1$pvalue_LR2)<10^-(5)){
-            if(output1$theta_1[ThetaIDX]<output1$theta_2[ThetaIDX]){
-              ClassArray[g,4*(j-1)+1]=output1$pvalue_LR2[ThetaIDX]
-              ClassArray[g,4*(j-1)+2]="-"
-            }else if(output1$theta_2[ThetaIDX]<output1$theta_1[ThetaIDX]){
-              ClassArray[g,4*(j-1)+1]="-"
-              ClassArray[g,4*(j-1)+2]=output1$pvalue_LR2[ThetaIDX]
-            }
-          }
-          if((min(output1$pvalue_LR3)<0.05)&&(min(output1$pvalue_LR3)>10^-(5))){
-            if(output1$mu_1[MuIDX]>output1$mu_2[MuIDX]){
-              ClassArray[g,4*(j-1)+3]=output1$pvalue_LR3[MuIDX]
-              ClassArray[g,4*(j-1)+4]="-"
-            }else if(output1$mu_2[MuIDX]>output1$mu_1[MuIDX]){
-              ClassArray[g,4*(j-1)+3]="-"
-              ClassArray[g,4*(j-1)+4]=output1$pvalue_LR3[MuIDX]
-            }
-          }else if(min(output1$pvalue_LR3)<10^-(5)){
-            if(output1$mu_1[MuIDX]>output1$mu_2[MuIDX]){
-              ClassArray[g,4*(j-1)+3]=output1$pvalue_LR3[MuIDX]
-              ClassArray[g,4*(j-1)+4]="-"
-            }else if(output1$mu_2[MuIDX]>output1$mu_1[MuIDX]){
-              ClassArray[g,4*(j-1)+3]="-"
-              ClassArray[g,4*(j-1)+4]=output1$pvalue_LR3[MuIDX]
             }
           }
         }
-}
+        rm(output1)
       }
     }
-    rm(output1)
+    else{
+      TCR1=CloneList[g]
+      GOIUS=match(goi,row.names(cell.data@assays$RNA@counts))
+      
+      if((length(intersect(cell.data$cell.type,TCR1))>0)){
+        
+        if((dim(subset(cell.data,cell.type %in% TCR1))[2]>2)){
+          
+          if(length(goi)==1){
+            mats=(t(as.matrix(subset(cell.data,cell.type %in% TCR1)@assays$RNA@counts[GOIUS,])))
+            grouper=rep(1,dim(t(as.matrix(subset(cell.data,cell.type %in% TCR1)@assays$RNA@counts[GOIUS[1],])))[2])
+            
+            if(sum(mats!=0)>5){
+              output1=DEsingle(mats,factor(grouper),goi)
+              ThetaIDX=which.min(output1$pvalue_LR2)
+              MuIDX=which.min(output1$pvalue_LR3)
+              if((min(output1$pvalue_LR2)<0.05)&&(min(output1$pvalue_LR2)>10^-(5))){
+                if(output1$theta_1[ThetaIDX]<output1$theta_2[ThetaIDX]){
+                  ClassArray[g,1]=output1$pvalue_LR2[ThetaIDX]
+                  ClassArray[g,4*(j-1)+2]=="-"
+                }else if(output1$theta_2[ThetaIDX]<output1$theta_1[ThetaIDX]){
+                  ClassArray[g,4*(j-1)+1]="-"
+                  ClassArray[g,4*(j-1)+2]=output1$pvalue_LR2[ThetaIDX]
+                }
+              }else if(min(output1$pvalue_LR2)<10^-(5)){
+                if(output1$theta_1[ThetaIDX]<output1$theta_2[ThetaIDX]){
+                  ClassArray[g,4*(j-1)+1]=output1$pvalue_LR2[ThetaIDX]
+                  ClassArray[g,4*(j-1)+2]="-"
+                }else if(output1$theta_2[ThetaIDX]<output1$theta_1[ThetaIDX]){
+                  ClassArray[g,4*(j-1)+1]="-"
+                  ClassArray[g,4*(j-1)+2]=output1$pvalue_LR2[ThetaIDX]
+                }
+              }
+              if((min(output1$pvalue_LR3)<0.05)&&(min(output1$pvalue_LR3)>10^-(5))){
+                if(output1$mu_1[MuIDX]>output1$mu_2[MuIDX]){
+                  ClassArray[g,4*(j-1)+3]=output1$pvalue_LR3[MuIDX]
+                  ClassArray[g,4*(j-1)+4]="-"
+                }else if(output1$mu_2[MuIDX]>output1$mu_1[MuIDX]){
+                  ClassArray[g,4*(j-1)+3]="-"
+                  ClassArray[g,4*(j-1)+4]=output1$pvalue_LR3[MuIDX]
+                }
+              }else if(min(output1$pvalue_LR3)<10^-(5)){
+                if(output1$mu_1[MuIDX]>output1$mu_2[MuIDX]){
+                  ClassArray[g,4*(j-1)+3]=output1$pvalue_LR3[MuIDX]
+                  ClassArray[g,4*(j-1)+4]="-"
+                }else if(output1$mu_2[MuIDX]>output1$mu_1[MuIDX]){
+                  ClassArray[g,4*(j-1)+3]="-"
+                  ClassArray[g,4*(j-1)+4]=output1$pvalue_LR3[MuIDX]
+                }
+              }
+            }
+          }
+          else{
+            mats=cbind((as.matrix(subset(cell.data[[1]],cell.type %in% TCR1)@assays$RNA@counts[GOIUS,])),
+                       (as.matrix(subset(cell.data[[1+j]],cell.type %in% TCR1)@assays$RNA@counts[GOISTIM,])))
+            grouper=c(rep(1,dim(t(as.matrix(subset(cell.data[[1]],cell.type %in% TCR1)@assays$RNA@counts[GOIUS[1],])))[2]),rep(2,dim(t(as.matrix(subset(cell.data[[1+j]],cell.type %in% TCR1)@assays$RNA@counts[GOISTIM[1],])))[2]))
+            if(sum(mats!=0)>5){
+              output1=DEsingle(mats,factor(grouper),goi)
+              ThetaIDX=which.min(output1$pvalue_LR2)
+              MuIDX=which.min(output1$pvalue_LR3)
+              if((min(output1$pvalue_LR2)<0.05)&&(min(output1$pvalue_LR2)>10^-(5))){
+                if(output1$theta_1[ThetaIDX]<output1$theta_2[ThetaIDX]){
+                  ClassArray[g,4*(j-1)+1]=output1$pvalue_LR2[ThetaIDX]
+                  ClassArray[g,4*(j-1)+2]=="-"
+                }else if(output1$theta_2[ThetaIDX]<output1$theta_1[ThetaIDX]){
+                  ClassArray[g,4*(j-1)+1]="-"
+                  ClassArray[g,4*(j-1)+2]=output1$pvalue_LR2[ThetaIDX]
+                }
+              }else if(min(output1$pvalue_LR2)<10^-(5)){
+                if(output1$theta_1[ThetaIDX]<output1$theta_2[ThetaIDX]){
+                  ClassArray[g,4*(j-1)+1]=output1$pvalue_LR2[ThetaIDX]
+                  ClassArray[g,4*(j-1)+2]="-"
+                }else if(output1$theta_2[ThetaIDX]<output1$theta_1[ThetaIDX]){
+                  ClassArray[g,4*(j-1)+1]="-"
+                  ClassArray[g,4*(j-1)+2]=output1$pvalue_LR2[ThetaIDX]
+                }
+              }
+              if((min(output1$pvalue_LR3)<0.05)&&(min(output1$pvalue_LR3)>10^-(5))){
+                if(output1$mu_1[MuIDX]>output1$mu_2[MuIDX]){
+                  ClassArray[g,4*(j-1)+3]=output1$pvalue_LR3[MuIDX]
+                  ClassArray[g,4*(j-1)+4]="-"
+                }else if(output1$mu_2[MuIDX]>output1$mu_1[MuIDX]){
+                  ClassArray[g,4*(j-1)+3]="-"
+                  ClassArray[g,4*(j-1)+4]=output1$pvalue_LR3[MuIDX]
+                }
+              }else if(min(output1$pvalue_LR3)<10^-(5)){
+                if(output1$mu_1[MuIDX]>output1$mu_2[MuIDX]){
+                  ClassArray[g,4*(j-1)+3]=output1$pvalue_LR3[MuIDX]
+                  ClassArray[g,4*(j-1)+4]="-"
+                }else if(output1$mu_2[MuIDX]>output1$mu_1[MuIDX]){
+                  ClassArray[g,4*(j-1)+3]="-"
+                  ClassArray[g,4*(j-1)+4]=output1$pvalue_LR3[MuIDX]
+                }
+              }
+            }
+          }
+        }
+      }
+      rm(output1)
     }
+    }
+
+    
     print(g)
+  
   }
-  }else{
+  else{
     for(g in 1:length(CloneList)){
 
       LE=dim(ClassArray)[[2]]
@@ -1112,73 +1232,120 @@ ClassifyCellTypes <- function(
   }
   write.csv(ClassArray,path)
   }
-  else{
-    if(method=="Mahalanobis"){
-      inputdistance=0
-      ClassifyCells(cell.data,signature.ref,goi,distance=inputdistance)
-    }
+  else if(method=="Mahalanobis"){
+    inputdistance=0
+    ClassifyCells(cell.data,reference,goi,distance=inputdistance)
+  }
+    
     else if(method=="z-score"){
       inputdistance=2
-      ClassifyCells(cell.data,signature.ref,goi,distance=inputdistance)
+      ClassifyCells(cell.data,reference,goi,distance=inputdistance)
     }
     else if(method=="Taxi cab"){
       inputdistance=1
-      ClassifyCells(cell.data,signature.ref,goi,distance=inputdistance)
+      ClassifyCells(cell.data,reference,goi,distance=inputdistance)
     }
     else if(method=="isoForest"){
       inputdistance=3
-      ClassifyCells(cell.data,signature.ref,goi,distance=inputdistance)
+      #ClassifyCells(cell.data,cell.types = cell.types, reference,goi,distance=inputdistance)
     }
-    path=paste(path,paste(paste(goi,"ClassificationTable",sep=""),".csv",sep=""),sep="")
-    CloneList=subset(annotation.tab,avg>3)$Clone..nucleic.
+    path=paste(path,paste(paste(paste(goi, collapse = ''),"ClassificationTable",sep=""),".csv",sep=""),sep="")
+    #CloneList=subset(annotation.tab,avg>3)$Clone..nucleic.
+    CloneList=annotation.tab
     ClassArray=data.frame(matrix(ncol=(((length(cell.data)))+2),nrow=length(CloneList)))
     names.sample=0
     if(method=="isoForest"){
-    for(j in 1:(length(cell.data)-1)){
-      names.sample=append(names.sample,c(paste(levels(factor(cell.data[[j]]@meta.data$orig.ident)),".height",sep="")))
-    }
+      if(length(cell.data)>1){
+        for(j in 1:(length(cell.data))){
+        names.sample=append(names.sample,c(paste(levels(factor(cell.data[[j]][[]]$orig.ident)),".height",sep="")))
+        }}
+      else{
+        names.sample=append(names.sample,c(paste(levels(factor(cell.data$orig.ident)),".height",sep="")))
+      }
+    
     }
     else{
-      for(j in 1:(length(cell.data)-1)){
-        names.sample=append(names.sample,c(paste(levels(factor(cell.data[[j]]@meta.data$orig.ident)),".Rscore",sep="")))
-      }
+      if(length(cell.data)>1){
+        for(j in 1:(length(cell.data))){
+          names.sample=append(names.sample,c(paste(levels(factor(cell.data[[j]][[]]$orig.ident)),".Rscore",sep="")))
+        }}
+        else{
+          names.sample=append(names.sample,c(paste(levels(factor(cell.data$orig.ident)),".Rscore",sep="")))
+        }
+      
+      
     }
     names.sample=names.sample[-1]
     names.sample=append(names.sample,c("cell.type","phenotype"))
     names(ClassArray) <- names.sample
-
-    df_speed=cell.data[[1]]@meta.data
-
-    for(g in 1:length(CloneList)){
-      LE=dim(ClassArray)[[2]]
-      ClassArray[g,(LE-1)]=CloneList[g]
-      cd4prop=length(subset(df_speed,cell.type == CloneList[g] & CD4cells=="1")$CD4cells)
-      cd8prop=length(subset(df_speed,cell.type == CloneList[g] & CD8cells=="1")$CD8cells)
-      lenCln=length(subset(df_speed,cell.type == CloneList[g])$CD8cells)
-      if((lenCln>5)&(cd4prop>cd8prop)){
-        ClassArray[g,(LE)]="CD4"
+    
+    if(length(cell.data)>1){
+      df_speed=cell.data[[1]]@meta.data
+      
+      for(g in 1:length(CloneList)){
+        LE=dim(ClassArray)[[2]]
+        ClassArray[g,(LE-1)]=CloneList[g]
+        cd4prop=length(subset(df_speed,cell.type == CloneList[g] & CD4cells=="1")$CD4cells)
+        cd8prop=length(subset(df_speed,cell.type == CloneList[g] & CD8cells=="1")$CD8cells)
+        lenCln=length(subset(df_speed,cell.type == CloneList[g])$CD8cells)
+        if((lenCln>5)&(cd4prop>cd8prop)){
+          ClassArray[g,(LE)]="CD4"
+        }
+        else if((lenCln>5)&(cd8prop>cd4prop)){
+          ClassArray[g,(LE)]="CD8"
+        }
+        else{
+          ClassArray[g,(LE)]="-"
+        }
+        #print(g)
+        
+        for(j in 1:(length(cell.data)-1)){
+          array.name=1
+          #print(cell.data)
+          output.data[[j]]=ClassifyCells(cell.data[[j]],reference,goi,cell.type,inputdistance)
+          ClassArray[g,j]=mean(subset(cell.data[[j]],`cell.type` %in% CloneList[g])@meta.data$Mdist)
+        }
       }
-      else if((lenCln>5)&(cd8prop>cd4prop)){
-        ClassArray[g,(LE)]="CD8"
-      }
-      else{
-        ClassArray[g,(LE)]="-"
-      }
-      print(g)
-
-      for(j in 1:(length(cell.data)-1)){
-    array.name=1
-    cell.data[[j]]=AddDistances(cell.data[[j]],array.name,reference,path.glist,distance = inputdistance)
-    ClassArray[g,j]=mean(subset(cell.data[[j]],`cell.type` %in% CloneList[g])@meta.data$Mdist)
+    }
+    
+    else{
+      df_speed=cell.data@meta.data
+      
+      for(g in 1:length(CloneList)){
+       
+        LE=dim(ClassArray)[[2]]
+        ClassArray[g,(LE-1)]=CloneList[g]
+        cd4prop=length(subset(df_speed,cdr3_na == CloneList[g] & CD4cells=="1")$CD4cells)
+        cd8prop=length(subset(df_speed,cdr3_na == CloneList[g] & CD8cells=="1")$CD8cells)
+        lenCln=length(subset(df_speed,cdr3_na == CloneList[g])$CD8cells)
+        if((lenCln>5)&(cd4prop>cd8prop)){
+          ClassArray[g,(LE)]="CD4"
+        }
+        else if((lenCln>5)&(cd8prop>cd4prop)){
+          ClassArray[g,(LE)]="CD8"
+        }
+        else{
+          ClassArray[g,(LE)]="-"
+        }
+        #print(g)
+        
+       ####broken section####
+        array.name=1
+        
+        output.data=ClassifyCells(cell.data,reference,goi,CloneList[g],inputdistance)
+        ClassArray[g, 1]=mean(subset(output.data,cdr3_na %in% CloneList[g])[['Isoforest']][['Isoforest']])
+        
       }
     }
 
+    
     ###Find the percentile cutoff for the distance
-    Thresh=quantile(ClassArray[,c.index],percentile)
+    Thresh=quantile(ClassArray[,1],.75)
     for(g in 1:length(CloneList)){
 
       for(j in 1:length(cell.data)){
         if(ClassArray[g,j]<Thresh){
+          
       ClassArray[g,j]="Specific"
         }
         else{
