@@ -38,7 +38,7 @@ Initial preprocessing of gene expression arrays with cell type annotation is pro
 **Vignettes**
 
 * To read in gene expression data and analyze clonotypes:
-[Getting started with aocseq](./html/GettingStartedWithaocseq.svg)
+[Getting started with aocseq](./R/GettingStartedWithaocseq.md)
 
 * To read in data containing citeseq hashtags, demultiplex, and analyze surface marker expression:
 [Using aocseq for hashtagged data](./html/GettingStartedWithaocseq.svg)
