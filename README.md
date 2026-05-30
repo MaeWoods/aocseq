@@ -6,7 +6,7 @@ The purpose of this statistical tool is to quantify single cell data and provide
 
 # Research applications
 
-The software goals are to combine probability and control theory with existing single cell analysis software for the classification of cells. Ultimately the aim is to provide a flexible framework that can be used to analyze a broad range of functional experiments that produce multi-modal data consisting of multiple different cell types. For a list of applications, see the section **Getting started** for the vignettes or the [slide deck](https://github.com/MaeWoods/aocseq/raw/main/SlideDeck.pdf) listing the functions. 
+The software goals are to combine probability and control theory with existing single cell analysis software for the classification of cells. Ultimately the aim is to provide a flexible framework that can be used to analyze a broad range of functional experiments that produce multi-modal data consisting of multiple different cell types. For a list of applications, see the section **Getting started** for the vignettes or the [documentation](https://github.com/MaeWoods/aocseq/raw/main/aocseq.pdf) listing the functions. 
 
 # Rationale for initial package development
 
