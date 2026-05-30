@@ -58,5 +58,4 @@ where $a_{qj}(k)$ is the frequency of the $q\mbox{th}$ TCR in the $j\mbox{th}$ c
 
 # Documentation: 
 
-* [slide deck](https://github.com/MaeWoods/aocseq/raw/main/SlideDeck.pdf)
-* [documentation](https://github.com/MaeWoods/aocseq/raw/main/documentation.pdf)
+* [documentation](https://github.com/MaeWoods/aocseq/raw/main/aocseq_0.1.0.pdf)
