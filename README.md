@@ -10,7 +10,7 @@ The software combines probability and control theory with existing single cell a
 
 # Rationale for initial package development
 
-The sofware was initially developed to identify receptor sequences from single cell RNA sequencing coupled with amplification of the receptor sequence. Specifically Version 0.1.0 has been used to quantify cells that are activated through the binding of their T cell receptors (TCRs) to cognate antigens. Therefore, the tool provides a method to identify full length TCRs with specificity directed toward a target antigen, that can then be tested for use as transgenes. However the aim is to develop functionality for the analysis of a broad range of sequencing of polyclonal data.
+The sofware was initially developed to identify receptor sequences from single cell RNA sequencing coupled with amplification of the receptor sequence. Version 0.1.0 can be used with single cell sequencing data of cells that have been activated through the binding of their T cell receptors (TCRs) to cognate antigens. The tool provides a method to identify full length TCRs with specificity directed toward a target antigen. The long term aim of the package is to develop functionality for the analysis of a broad range of sequencing techniques applicable to polyclonal cells.
 
 **Introduction to TCR sequencing**
 
