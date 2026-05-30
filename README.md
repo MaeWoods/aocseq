@@ -38,7 +38,7 @@ Initial preprocessing of gene expression arrays with cell type annotation is pro
 **Vignettes**
 
 * To get started:
-[Getting started](./R/GettingStartedWithAocseq.md)
+[Getting started](./R/GettingStartedWithaocseq.Rmd)
 
 * To read in data containing citeseq hashtags, demultiplex, and analyze surface marker expression:
 [Using aocseq for hashtagged data](./R/citeseqvignette.md)
