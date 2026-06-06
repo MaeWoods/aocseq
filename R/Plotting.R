@@ -374,8 +374,12 @@ SaveHeatmap <- function(
 ){
   
   cell.datainput=cell.data
-  
+  if(packageVersion("Seurat")<'5.0.0'){
   cell.data=as.matrix(cell.data@assays$RNA@counts)
+  }
+  else{
+    cell.data=as.matrix(cell.data@assays$RNA$counts)
+  }  
   PFcolsRoundone=mean(colSums(cell.data))
   cell.data=log((1+(cell.data)))
   PFcolsRoundtwo=mean(colSums(cell.data))
