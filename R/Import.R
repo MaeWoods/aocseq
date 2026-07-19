@@ -292,6 +292,157 @@ GMMDemux<-function(
 }
 
 #%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+# Enhanced CD4 and CD8 counts
+#%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+#' Subroutine
+#'
+#' Multi-mixture model to differentiate between CD4+ and CD8+ cells
+#'
+#' @param data Input data. 10x genomics Seurat object with hashtag antibodies.
+#' @param cd4 List containing CD4 UMI counts in single cell assay object
+#' @param cd8a List containing CD8A UMI counts in single cell assay object
+#' @param cd8b List containing CD8B UMI counts in single cell assay object
+#' @param input_pca1 principal component 1 from a PCA of the cd4, cd8a and cd8b counts.
+#' 
+#' @return A Seurat object with meta data that splits the cells into their CD4 and CD8 phenotypes
+#' @concept Statistical inference
+#' @export
+PhenotypeMarkers <-function(
+  data, 
+  cd4, 
+  cd8a, 
+  cd8b,
+  input_pca1
+){
+  
+  tempqp=input_pca1
+  #arrays to store inferred parameters
+  mu.cont<-c()
+  var.cont<-c()
+  alpha.cont<-c()
+  #KMeans and model fitting loop
+    wait <- tempqp
+    
+    wait.kmeans <- kmeans(na.omit(wait), 2)
+    wait.kmeans.cluster <- wait.kmeans$cluster
+    wait.df <- data.frame(x = na.omit(wait), num=rank(na.omit(wait),ties.method = "first"), cluster = wait.kmeans.cluster)
+    wait.summary.df1=data.frame(cluster=c(1,2),
+                                mu=c(mean(subset(wait.df,cluster==1)$x),mean(subset(wait.df,cluster==2)$x)),
+                                variance = c(var(subset(wait.df,cluster==1)$x),var(subset(wait.df,cluster==2)$x)),
+                                std = c(sd(subset(wait.df,cluster==1)$x),sd(subset(wait.df,cluster==2)$x)),
+                                size=c(length(subset(wait.df,cluster==1)$x),length(subset(wait.df,cluster==2)$x)))
+    wait.summary.df1$alpha=(wait.summary.df1$size)/sum(wait.summary.df1$size)
+    
+    print(wait.summary.df1)
+    
+    for (i in 1:25) {
+      if (i == 1) {
+        # Initialization
+        e.step <- EStep(wait, wait.summary.df1[["mu"]], wait.summary.df1[["std"]],
+                        wait.summary.df1[["alpha"]])
+        m.step1 <- MStep(wait, e.step[["posterior.df"]])
+        cur.loglik <- e.step[["loglik"]]
+        loglik.vector <- e.step[["loglik"]]
+      }
+      else {
+        # Repeat E and M steps till convergence
+        e.step <- EStep(wait, m.step1[["mu"]], sqrt(m.step1[["var"]]),
+                        m.step1[["alpha"]])
+        m.step1 <- MStep(wait, e.step[["posterior.df"]])
+        loglik.vector <- c(loglik.vector, e.step[["loglik"]])
+        
+        loglik.diff <- abs((cur.loglik - e.step[["loglik"]]))
+        if(loglik.diff < 1e-6) {
+          break
+        } else {
+          cur.loglik <- e.step[["loglik"]]
+        }
+      }
+    }
+    mu.cont<-append(mu.cont, m.step1$mu)
+    var.cont<-append(var.cont, m.step1$var)
+    alpha.cont<-append(alpha.cont, m.step1$alpha)
+  
+  phenotype=rep("unassigned",length(tempqp))
+
+  #Assign cells to phenotype
+  for(j in 1:length(tempqp)){
+    high.cont<-0
+    low.cont<-0
+      
+      if(mu.cont[2]>mu.cont[1]){
+        x=tempqp[j]
+        low=alpha.cont[1]
+        high=alpha.cont[2]
+        #dnorm takes standard deviation not variance, important here because of close proximity of peaks
+        xgivenPz_ihigh = dnorm(x, mean = mu.cont[2], sd = sqrt(var.cont[2]), log = FALSE)
+        xgivenPz_ilow = dnorm(x, mean = mu.cont[1], sd = sqrt(var.cont[1]), log = FALSE)
+        Px_i = xgivenPz_ilow*low + xgivenPz_ihigh*high
+        K1Pz_ihighgiven_x = (xgivenPz_ihigh*high)/Px_i
+        K1Pz_ilowgiven_x = (xgivenPz_ilow*low)/Px_i
+        
+      }
+      else{
+        x=tempqp[j]
+        low=alpha.cont[2]
+        high=alpha.cont[1]
+        xgivenPz_ihigh = dnorm(x, mean = mu.cont[1], sd = sqrt(var.cont[1]), log = FALSE)
+        xgivenPz_ilow = dnorm(x, mean = mu.cont[2], sd=sqrt(var.cont[2]), log = FALSE)
+        Px_i = xgivenPz_ilow*low + xgivenPz_ihigh*high
+        K1Pz_ihighgiven_x = (xgivenPz_ihigh*high)/Px_i
+        K1Pz_ilowgiven_x = (xgivenPz_ilow*low)/Px_i
+        
+      }
+      high.cont= K1Pz_ihighgiven_x
+      low.cont= K1Pz_ilowgiven_x
+    
+    
+    #probability assignment
+    if((cd4[j]>0)|(cd8a[j]>0)|(cd8b[j]>0)){
+      if(high.cont>low.cont){
+      phenotype[j]="ClassA"
+      }
+      else if (high.cont<low.cont){
+        phenotype[j]="ClassB"
+      }
+      
+    }
+    
+  }
+  df = data.frame(p=phenotype, cd4=cd4, cd8=cd8a)
+  mA_cd8=max(subset(df,p=="ClassA")$cd8)
+  mB_cd8=max(subset(df,p=="ClassB")$cd8)
+  sA_cd8=sum(subset(df,p=="ClassA")$cd8)
+  sB_cd8=sum(subset(df,p=="ClassB")$cd8)
+  if((mA_cd8>mB_cd8)&(sA_cd8>sB_cd8)){
+    for(k in 1:length(df$p)){
+      if(df$p[k]=="ClassA"){
+      df$p[k]="CD8"
+      }
+      else if(df$p[k]=="ClassB"){
+        df$p[k]="CD4"
+      }
+    }
+  }
+  else if((mA_cd8<mB_cd8)&(sA_cd8<sB_cd8)){
+    for(k in 1:length(df$p)){
+      if(df$p[k]=="ClassA"){
+        df$p[k]="CD4"
+      }
+      else if(df$p[k]=="ClassB"){
+        df$p[k]="CD8"
+      }
+    }
+  }
+  else{
+    print("Error: check CD4 and CD8 counts")
+  }
+  #Add metadata and return updated Seurat object 
+  data=AddMetaData(data, df$p, col.name = "Tcellsubset")
+  return(data)
+}
+
+#%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 # CombineData
 #%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 #' Combine single cell data and annotate with cell labels based on functionality
@@ -349,7 +500,8 @@ CombineData <- function(
   upperQ=.95,
   lowerQ=.05,
   verbose=TRUE,
-  QC_plots=FALSE
+  QC_plots=FALSE,
+  enhanced_pca=FALSE
 ){
 
   #Set undefined parameters
@@ -531,6 +683,35 @@ CombineData <- function(
       
       rm(CD8cells)
       rm(CD4cells)
+
+      ##For a PCA-mixture model using CD8A, CD8B and CD4 genes for Cd4 and Cd8 separation
+      if(enhanced_pca=TRUE){
+        
+        Gene_indUMO=match(marker.gene,row.names(mvsts.UMO))
+        CD8A_UMO=match("CD8A",row.names(mvsts.UMO))
+        CD8B_UMO=match("CD8B",row.names(mvsts.UMO))
+        CD4_UMO=match("CD4",row.names(mvsts.UMO))
+        CD8cells=rep(0,length(mvsts.UMO[Gene_indUMO[1],]))
+        CD4cells=rep(0,length(mvsts.UMO[Gene_indUMO[1],]))
+        
+        vec1=mvsts.UMO[CD4_UMO,]
+        vec2=mvsts.UMO[CD8A_UMO,]
+        vec3=mvsts.UMO[CD8B_UMO,]
+        
+        phenotype_data <- data.frame(
+          cd8a = log(vec2+1),
+          cd8b = log(vec3+1),
+          cd4 = log(vec1+1)
+        )
+        
+        scaled_phenotype_data <- phenotype_data
+        scaled_phenotype_data.pca <- princomp(scaled_phenotype_data)
+        newmat=scaled_phenotype_data.pca$scores
+        df_phenotype=data.frame(a=newmat[,1],b=newmat[,2],c=newmat[,3])
+        Clonal_Obs[[k]]=PhenotypeMarkers(Clonal_Obs[[k]], vec1, vec2, vec3,df_phenotype$a)
+
+      }
+
       #Check for errors - should you wish to plot
       #plot(log10(mvsts.UMO[Gene_indUMO[1],]),log10(mvsts.UMO[Gene_indUMO[2],]),xlab=paste(Gene_indUMO[3]," (log10 UMIs)",sep=""),ylab=paste(Gene_indUMO[2]," (log10 UMIs)",sep=""),col=rgb(red=0, green = 0, blue = 0, alpha=0.5),pch=16,cex=1,xlim=c(0,4.5),ylim=c(0,4.5))
       #plot(log10(mvsts.UMO[CD8_UMO,]),log10(mvsts.UMO[CD4_UMO,]),xlab="CD8",ylab="CD4",col=rgb(red=0, green = 0, blue = 0, alpha=0.5),pch=16,cex=1,xlim=c(0,4.5),ylim=c(0,4.5))
